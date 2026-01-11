@@ -13,6 +13,7 @@ members = [
     "lattice-core",
     "lattice-embed",
     "lattice",
+    "lattice-cli",
 ]
 resolver = "2"
 

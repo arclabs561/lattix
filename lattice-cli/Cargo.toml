@@ -1,0 +1,21 @@
+[package]
+name = "lattice-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "CLI for knowledge graph operations"
+publish = false
+
+[[bin]]
+name = "lattice"
+path = "src/main.rs"
+
+[dependencies]
+lattice = { path = "../lattice" }
+lattice-core = { path = "../lattice-core" }
+
+clap = { version = "4", features = ["derive"] }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
