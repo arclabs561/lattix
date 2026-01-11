@@ -2,6 +2,14 @@
 
 Knowledge graph construction and embedding inference for Rust.
 
+## Structure & Visualizations
+
+The `lattice` ecosystem integrates closely with `rank-rank`:
+
+![Knowledge Graph Structure](hack/viz/kg_structure.png)
+
+This graph visualizes the dependencies and relationships within the `rank-rank` ecosystem, generated using `lattice`'s own data structures (exported to NetworkX for plotting).
+
 ## Overview
 
 `lattice` provides:
