@@ -7,7 +7,7 @@ Knowledge graph construction and embedding inference for Rust.
 `lattice` provides:
 
 - **Core types**: Triple, Entity, Relation, KnowledgeGraph
-- **N-Triples import**: Load knowledge graphs from RDF format
+- **RDF 1.2 formats**: N-Triples, N-Quads, Turtle, JSON-LD
 - **KGE inference**: TransE, RotatE, ComplEx scoring (via ONNX)
 - **Link prediction**: Find missing edges in knowledge graphs
 
@@ -47,10 +47,33 @@ let stats = kg.stats();
 println!("Entities: {}, Triples: {}", stats.entity_count, stats.triple_count);
 ```
 
-### Loading from N-Triples (from anno)
+### RDF Formats (RDF 1.2)
+
+Supports modern RDF 1.2 specifications (2024):
+
+```rust
+use lattice::{KnowledgeGraph, formats::{NTriples, NQuads, Turtle, JsonLd}};
+
+// N-Triples (line-based, simple)
+let kg = NTriples::from_str(ntriples_content)?;
+let output = NTriples::to_string(&kg)?;
+
+// N-Quads (triples with named graphs)
+let graphs = NQuads::read(reader)?;
+let merged = NQuads::read_merged(reader)?;
+
+// Turtle (human-readable)
+let turtle = Turtle::to_string(&kg)?;
+
+// JSON-LD (linked data)
+let jsonld = JsonLd::to_string(&kg)?;
+let kg = JsonLd::from_str(jsonld_content)?;
+```
+
+### Loading from anno export
 
 ```bash
-# First, export from anno
+# Export from anno
 anno export -i documents/ -o kg/ --format ntriples
 ```
 

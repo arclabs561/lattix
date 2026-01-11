@@ -70,6 +70,11 @@ pub use lattice_core::{
 // Re-export petgraph for advanced graph operations
 pub use lattice_core::petgraph;
 
+/// RDF serialization formats (RDF 1.2).
+pub mod formats {
+    pub use lattice_core::formats::*;
+}
+
 /// Embedding inference module.
 pub mod embed {
     pub use lattice_embed::*;

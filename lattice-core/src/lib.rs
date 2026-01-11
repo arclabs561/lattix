@@ -7,6 +7,14 @@
 //! - [`Relation`] - An edge type in the knowledge graph
 //! - [`KnowledgeGraph`] - A graph structure built from triples
 //!
+//! # Serialization Formats
+//!
+//! Supports modern RDF 1.2 specifications (2024):
+//! - N-Triples - Line-based, simple
+//! - N-Quads - N-Triples with named graphs
+//! - Turtle - Human-readable
+//! - JSON-LD - Linked data
+//!
 //! # Example
 //!
 //! ```rust
@@ -29,13 +37,16 @@
 //! Import triples from anno's N-Triples export:
 //!
 //! ```rust,ignore
-//! use lattice_core::KnowledgeGraph;
+//! use lattice_core::{KnowledgeGraph, formats::NTriples};
 //!
 //! let kg = KnowledgeGraph::from_ntriples_file("entities.nt")?;
+//! // Or use the format handlers directly:
+//! let kg = NTriples::from_str(content)?;
 //! ```
 
 mod entity;
 mod error;
+pub mod formats;
 mod graph;
 mod relation;
 mod triple;
