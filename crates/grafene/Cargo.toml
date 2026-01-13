@@ -1,0 +1,27 @@
+[package]
+name = "grafene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Graph learning for Rust: GNN, knowledge graphs, temporal graphs"
+publish = false
+
+[dependencies]
+grafene-core = { path = "../grafene-core" }
+grafene-kge = { path = "../grafene-kge", optional = true }
+grafene-nn = { path = "../grafene-nn", optional = true }
+grafene-temporal = { path = "../grafene-temporal", optional = true }
+
+[features]
+default = []
+kge = ["grafene-kge"]
+onnx = ["grafene-kge", "grafene-kge/onnx"]
+nn = ["grafene-nn"]
+gnn = ["nn"]  # Alias for backwards compatibility
+temporal = ["grafene-temporal"]
+full = ["kge", "onnx", "nn", "temporal"]
+
+[lints]
+workspace = true
