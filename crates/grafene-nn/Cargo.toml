@@ -11,7 +11,7 @@ categories = ["science", "mathematics"]
 default = ["node2vec"]
 node2vec = []
 kge = []
-hyperbolic = ["locus"]
+hyperbolic = ["hyperball"]
 onnx = ["ort"]
 
 [dependencies]
@@ -19,7 +19,7 @@ onnx = ["ort"]
 grafene-core = { path = "../grafene-core" }
 
 # Geometry Layer (hyperbolic operations)
-locus = { path = "../../../locus", optional = true }
+hyperball = { path = "../../../hyperball", optional = true }
 
 # Compute Backend
 candle-core = "0.8"

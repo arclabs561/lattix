@@ -5,7 +5,17 @@
 //! KGE models learn low-dimensional vector representations where
 //! **geometric operations on embeddings predict missing links**.
 //!
-//! ## The Core Intuition
+//! ## Geometric Approaches to KGE
+//!
+//! Different geometries suit different graph structures:
+//!
+//! | Geometry | Best For | Crate |
+//! |----------|----------|-------|
+//! | Euclidean (point) | General relations | This crate |
+//! | Hyperbolic | Tree hierarchies | `hyperball` (feature: `hyperbolic`) |
+//! | Box/Region | DAGs, containment | `subsume` (feature: `boxe`) |
+//!
+//! ## Point Embeddings (Euclidean)
 //!
 //! Each model encodes a different geometric hypothesis about how
 //! relations transform entities:
@@ -16,6 +26,29 @@
 //! | RotatE | Relations are rotations | h ∘ r ≈ t |
 //! | DistMult | Relations are scalings | <h, r, t> |
 //! | ComplEx | Asymmetric relations | Re(<h, r, conj(t)>) |
+//!
+//! ## Box Embeddings (with `boxe` feature)
+//!
+//! BoxE ([Abboud et al. 2020](https://arxiv.org/abs/2007.06267)) represents
+//! entities as points and relations as boxes. A triple (h, r, t) is true
+//! if the translated head falls within the relation's box.
+//!
+//! **Advantages over TransE/RotatE**:
+//! - Handles symmetry, antisymmetry, composition, inversion, **and** hierarchy
+//! - Fully expressive (can model any KG)
+//! - Natural support for containment/subsumption
+//!
+//! See `subsume` crate for box embedding primitives.
+//!
+//! ## Hyperbolic Embeddings (with `hyperbolic` feature)
+//!
+//! Hyperbolic space has exponential volume growth, matching tree branching.
+//! Models like MuRP, RotH, AttH embed hierarchies in low dimensions.
+//!
+//! **Best for**: Strict tree hierarchies (taxonomy, phylogenetics)
+//! **Limitation**: Struggles with DAGs and multiple parents
+//!
+//! See `hyperball` crate for Poincare ball operations.
 //!
 //! ## TransE: Relations as Translations
 //!
@@ -108,6 +141,7 @@
 
 mod error;
 mod scoring;
+pub mod training;
 
 #[cfg(feature = "onnx")]
 mod onnx;

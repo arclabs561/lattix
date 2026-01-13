@@ -22,6 +22,11 @@ pub enum Error {
     /// Operation not supported by the model or configuration.
     #[error("Unsupported operation: {0}")]
     UnsupportedOperation(String),
+
+    /// Box embedding error (from subsume crate).
+    #[cfg(feature = "boxe")]
+    #[error("Box embedding error: {0}")]
+    BoxEmbedding(String),
 }
 
 /// Result type alias for grafene-embed.

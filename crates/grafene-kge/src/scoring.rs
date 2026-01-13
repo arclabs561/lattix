@@ -1,4 +1,23 @@
 //! Scoring functions for knowledge graph embeddings.
+//!
+//! # Geometric Approaches
+//!
+//! KGE models differ in how they interpret relations geometrically:
+//!
+//! | Geometry | Models | Strengths |
+//! |----------|--------|-----------|
+//! | Translation | TransE | Simple, fast, good on hierarchies |
+//! | Rotation | RotatE | Composition, symmetry patterns |
+//! | Bilinear | DistMult, ComplEx | Asymmetric relations |
+//! | Box | BoxE | Containment, hierarchy, all patterns |
+//!
+//! # Historical Note
+//!
+//! TransE (Bordes et al. 2013) started the translation distance paradigm.
+//! RotatE (Sun et al. 2019) added rotation for composition.
+//! BoxE (Abboud et al. 2020) unified all patterns via box containment.
+//!
+//! Enable `boxe` feature for BoxE support via `subsume` crate.
 
 use serde::{Deserialize, Serialize};
 
@@ -30,12 +49,33 @@ pub struct TripleScore {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScoringFunction {
     /// TransE: -||h + r - t||
+    ///
+    /// The original translation model (Bordes et al. 2013). Relations are
+    /// translations: if (h, r, t) is true, then h + r ≈ t.
+    ///
+    /// **Strengths**: Simple, fast, works well on hierarchies.
+    /// **Weakness**: Can't model symmetric or N-to-N relations.
     TransE,
+
     /// RotatE: -||h ∘ r - t|| (Complex space)
+    ///
+    /// Models relations as rotations (Sun et al. 2019). Each relation
+    /// has an angle θ, and h is rotated by θ to match t.
+    ///
+    /// **Strengths**: Composition (angles add), symmetry (180° rotation).
     RotatE,
+
     /// ComplEx: Re(<h, r, conj(t)>)
+    ///
+    /// Complex embeddings for asymmetric relations (Trouillon et al. 2016).
+    /// The conjugate breaks symmetry.
     ComplEx,
+
     /// DistMult: <h, r, t>
+    ///
+    /// Diagonal bilinear model (Yang et al. 2015).
+    ///
+    /// **Weakness**: Inherently symmetric - predicts (h,r,t) = (t,r,h).
     DistMult,
 }
 
@@ -126,6 +166,59 @@ fn score_complex(head: &[f32], relation: &[f32], tail: &[f32]) -> f32 {
         score += x * t_re + y * t_im;
     }
     score
+}
+
+// ============================================================================
+// BoxE Scoring (with `boxe` feature)
+// ============================================================================
+
+/// BoxE scoring: box containment after relation translation.
+///
+/// Entities are boxes (min/max bounds), relations are translations.
+/// Score = containment probability of tail in translated head.
+///
+/// # Mathematical Formulation
+///
+/// For triple (h, r, t):
+/// 1. h' = h + bump_r (translate head by relation)
+/// 2. score = P(t ⊆ h') = Vol(h' ∩ t) / Vol(t)
+///
+/// # Why BoxE?
+///
+/// Unlike point embeddings (TransE, RotatE), boxes naturally model:
+/// - **Hierarchy**: Container boxes subsume contained ones
+/// - **Symmetry**: Overlapping boxes of equal size
+/// - **Composition**: Nested translations
+/// - **Multiple patterns simultaneously**
+///
+/// # Reference
+///
+/// Abboud et al. (2020). "BoxE: A Box Embedding Model for Knowledge Base
+/// Completion." NeurIPS 2020. <https://arxiv.org/abs/2007.06267>
+#[cfg(feature = "boxe")]
+pub fn boxe_score(
+    head_min: &[f32],
+    head_max: &[f32],
+    tail_min: &[f32],
+    tail_max: &[f32],
+    relation_bump: &[f32],
+    temperature: f32,
+) -> crate::Result<f32> {
+    use subsume_core::boxe;
+
+    boxe::boxe_score(head_min, head_max, tail_min, tail_max, relation_bump, temperature)
+        .map_err(|e| crate::Error::BoxEmbedding(format!("{:?}", e)))
+}
+
+/// BoxE margin-based ranking loss.
+///
+/// Encourages positive triples to score higher than negative triples
+/// by at least the margin.
+///
+/// loss = max(0, margin - score_pos + score_neg)
+#[cfg(feature = "boxe")]
+pub fn boxe_loss(positive_score: f32, negative_score: f32, margin: f32) -> f32 {
+    subsume_core::boxe::boxe_loss(positive_score, negative_score, margin)
 }
 
 #[cfg(test)]

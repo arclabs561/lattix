@@ -16,10 +16,21 @@ thiserror = { workspace = true }
 ort = { optional = true, version = "2.0.0-rc", features = ["ndarray"] }
 ndarray = "0.17.2"
 
+# Box embeddings for containment/hierarchy modeling (BoxE)
+subsume-core = { path = "../../../subsume/subsume-core", optional = true }
+subsume-ndarray = { path = "../../../subsume/subsume-ndarray", optional = true }
+
+# Hyperbolic embeddings for tree-like hierarchies
+hyperball = { path = "../../../hyperball", optional = true }
+
 [features]
 default = []
 onnx = ["ort"]
 ort = ["dep:ort"]
+# BoxE-style containment embeddings
+boxe = ["subsume-core", "subsume-ndarray"]
+# Hyperbolic KGE (MuRP, RotH, AttH style)
+hyperbolic = ["hyperball"]
 
 [dev-dependencies]
 proptest = { workspace = true }
