@@ -1,0 +1,19 @@
+[package]
+name = "lattix-temporal"
+version = "0.1.0"
+edition = "2021"
+description = "Temporal graph primitives: time-evolving graphs, temporal message passing"
+license = "MIT OR Apache-2.0"
+keywords = ["temporal", "graph", "time-series", "dynamic-graph"]
+categories = ["science", "data-structures"]
+
+[dependencies]
+# Structure Layer
+lattix-core = { path = "../lattix-core" }
+
+# Utils
+smallvec = "1.13"
+thiserror = "1.0"
+
+[dev-dependencies]
+approx = "0.5"

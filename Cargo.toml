@@ -2,12 +2,12 @@
 # Graph Learning Stack: GNN, Knowledge Graphs, Temporal Graphs
 #
 # Crates:
-#   grafene-core     - Triple, Entity, Graph types, algorithms
-#   grafene-nn       - GNN layers (GCN, GAT), Node2Vec
-#   grafene-kge      - KGE inference (TransE, RotatE, ONNX)
-#   grafene-temporal - Temporal graph primitives
-#   grafene          - Facade crate
-#   grafene-py       - Python bindings
+#   lattix-core     - Triple, Entity, Graph types, algorithms
+#   lattix-nn       - GNN layers (GCN, GAT), Node2Vec
+#   lattix-kge      - KGE inference (TransE, RotatE, ONNX)
+#   lattix-temporal - Temporal graph primitives
+#   lattix          - Facade crate
+#   lattix-py       - Python bindings
 #
 members = [
     "crates/*",
@@ -20,9 +20,9 @@ edition = "2021"
 rust-version = "1.75"
 license = "MIT OR Apache-2.0"
 authors = ["Arc <attobop@gmail.com>"]
-repository = "https://github.com/arclabs561/grafene"
-homepage = "https://github.com/arclabs561/grafene"
-documentation = "https://docs.rs/grafene"
+repository = "https://github.com/arclabs561/lattix"
+homepage = "https://github.com/arclabs561/lattix"
+documentation = "https://docs.rs/lattix"
 
 [workspace.dependencies]
 # Serialization
@@ -80,6 +80,15 @@ unused_lifetimes = "warn"
 semicolon_in_expressions_from_macros = "warn"
 unsafe_op_in_unsafe_fn = "warn"
 unused_macro_rules = "warn"
+
+# Local development overrides - use sibling repos when available
+# Comment out for CI or when testing standalone builds
+[patch."https://github.com/arclabs561/hyperball.git"]
+hyperball = { path = "../hyperball" }
+
+[patch."https://github.com/arclabs561/subsume.git"]
+subsume-core = { path = "../subsume/subsume-core" }
+subsume-ndarray = { path = "../subsume/subsume-ndarray" }
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }
