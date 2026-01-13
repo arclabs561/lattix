@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.75.0
+      - uses: dtolnay/rust-toolchain@1.82.0
       - uses: Swatinem/rust-cache@v2
 
       # Note: lattix-kge depends on candle which requires Rust 1.80+ (rayon 1.11)

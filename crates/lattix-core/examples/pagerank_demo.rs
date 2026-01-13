@@ -63,8 +63,10 @@ fn main() {
     }
 
     println!("\nInterpretation:");
-    println!("- Einstein has highest PageRank: influenced by Newton, Maxwell, Planck");
-    println!("- Bohr is second: Einstein influenced him, and he influenced many others");
+    println!(
+        "- Weinberg/Feynman have highest PageRank: they're sink nodes (receive but don't give)"
+    );
+    println!("- Einstein is mid-rank: receives from Newton/Maxwell/Planck, gives to Feynman/Bohr");
     println!("- Newton/Maxwell/Planck have low scores: they're source nodes (no incoming links)");
 
     println!("\nDone!");
