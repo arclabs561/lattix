@@ -1,9 +1,43 @@
-//! Knowledge Graph Embedding inference.
+//! Knowledge Graph Embedding training and inference.
 //!
 //! Knowledge graphs store facts as (head, relation, tail) triples:
 //! `(Einstein, won, NobelPrize)`, `(Paris, capitalOf, France)`.
 //! KGE models learn low-dimensional vector representations where
 //! **geometric operations on embeddings predict missing links**.
+//!
+//! # Multi-Backend Architecture
+//!
+//! This crate follows anno's pattern: **abstract at the model level, not the tensor level**.
+//! All models implement [`KGEModel`], regardless of their internal backend.
+//!
+//! ```rust,ignore
+//! use grafene_kge::{KGEModel, TransE, BoxE, Fact, TrainingConfig};
+//!
+//! // Both share the same interface
+//! let mut transe = TransE::new(128);
+//! let mut boxe = BoxE::new(128);
+//!
+//! let triples = vec![
+//!     Fact::from_strs("Einstein", "won", "NobelPrize"),
+//!     Fact::from_strs("Paris", "capitalOf", "France"),
+//! ];
+//!
+//! transe.train(&triples, &TrainingConfig::default())?;
+//! boxe.train(&triples, &TrainingConfig::default())?;
+//!
+//! // Same scoring interface
+//! let s1 = transe.score("Einstein", "won", "NobelPrize")?;
+//! let s2 = boxe.score("Einstein", "won", "NobelPrize")?;
+//! ```
+//!
+//! # Available Models
+//!
+//! | Model | Backend | Feature | Status |
+//! |-------|---------|---------|--------|
+//! | [`TransE`] | ndarray | always | Working |
+//! | [`BoxE`] | ndarray | always | Working |
+//! | `TransEBurn` | burn | `burn` | Scaffolding |
+//! | `MuRP` | hyperball | `hyperbolic` | Planned |
 //!
 //! ## Geometric Approaches to KGE
 //!
@@ -141,6 +175,8 @@
 
 mod error;
 pub mod evaluation;
+pub mod model;
+pub mod models;
 mod scoring;
 pub mod training;
 
@@ -152,6 +188,8 @@ pub mod hyperbolic;
 
 pub use error::{Error, Result};
 pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
+pub use model::{BatchCapable, EpochMetrics, Fact, GpuCapable, KGEModel, Prediction};
+pub use models::{BoxE, TransE};
 pub use scoring::{LinkPredictionResult, ScoringFunction, TripleScore};
 
 #[cfg(feature = "onnx")]

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Errors that can occur in grafene-embed.
+/// Errors that can occur in grafene-kge.
 #[derive(Error, Debug)]
 pub enum Error {
     /// IO error.
@@ -22,6 +22,12 @@ pub enum Error {
     /// Operation not supported by the model or configuration.
     #[error("Unsupported operation: {0}")]
     UnsupportedOperation(String),
+    /// Generic not found error.
+    #[error("Not found: {0}")]
+    NotFound(String),
+    /// Validation error.
+    #[error("Validation error: {0}")]
+    Validation(String),
 
     /// Box embedding error (from subsume crate).
     #[cfg(feature = "boxe")]

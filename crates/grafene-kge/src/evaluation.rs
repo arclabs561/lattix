@@ -44,9 +44,9 @@ use crate::scoring::ScoringFunction;
 /// Rank-based evaluation results.
 #[derive(Debug, Clone, Default)]
 pub struct RankMetrics {
-    /// Mean Reciprocal Rank: E[1/rank]
+    /// Mean Reciprocal Rank: E\[1/rank\]
     pub mrr: f64,
-    /// Mean Rank: E[rank]
+    /// Mean Rank: E\[rank\]
     pub mr: f64,
     /// Hits@1: P(rank = 1)
     pub hits_at_1: f64,

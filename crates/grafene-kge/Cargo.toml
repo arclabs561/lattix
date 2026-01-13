@@ -34,6 +34,9 @@ boxe = ["subsume-core", "subsume-ndarray"]
 hyperbolic = ["hyperball", "rand"]
 # Training with proper optimizers (Adam, AdamW)
 training = ["subsume-ndarray"]
+# GPU acceleration via Burn (scaffolding, not yet implemented)
+# When implementing, add: burn = { version = "0.15", optional = true, features = ["wgpu", "autodiff"] }
+burn = []
 
 [dev-dependencies]
 proptest = { workspace = true }
