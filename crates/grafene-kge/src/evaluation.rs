@@ -37,6 +37,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use grafene_core::{EntityId, RelationType, Triple};
+
 use crate::scoring::ScoringFunction;
 
 /// Rank-based evaluation results.
@@ -132,24 +134,52 @@ impl RankMetrics {
     }
 }
 
-/// Triple for evaluation (using string IDs).
+/// Triple identity for evaluation (hashable, without metadata).
+///
+/// Unlike [`Triple`], this is only the (head, relation, tail) tuple
+/// without confidence/source metadata. Used for filtering known triples.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct EvalTriple {
-    /// Head entity identifier.
-    pub head: String,
-    /// Relation type identifier.
-    pub relation: String,
-    /// Tail entity identifier.
-    pub tail: String,
+    /// Head entity (subject).
+    pub head: EntityId,
+    /// Relation type (predicate).
+    pub relation: RelationType,
+    /// Tail entity (object).
+    pub tail: EntityId,
 }
 
 impl EvalTriple {
     /// Create a new evaluation triple.
-    pub fn new(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
+    pub fn new(
+        head: impl Into<EntityId>,
+        relation: impl Into<RelationType>,
+        tail: impl Into<EntityId>,
+    ) -> Self {
         Self {
             head: head.into(),
             relation: relation.into(),
             tail: tail.into(),
+        }
+    }
+}
+
+impl From<&Triple> for EvalTriple {
+    /// Convert from [`Triple`], discarding metadata.
+    fn from(t: &Triple) -> Self {
+        Self {
+            head: t.subject.clone(),
+            relation: t.predicate.clone(),
+            tail: t.object.clone(),
+        }
+    }
+}
+
+impl From<Triple> for EvalTriple {
+    fn from(t: Triple) -> Self {
+        Self {
+            head: t.subject,
+            relation: t.predicate,
+            tail: t.object,
         }
     }
 }
@@ -207,28 +237,28 @@ impl Evaluator {
     /// Entities with known true triples are filtered out.
     pub fn rank_tail_filtered(
         &self,
-        head: &str,
-        relation: &str,
-        true_tail: &str,
+        head: &EntityId,
+        relation: &RelationType,
+        true_tail: &EntityId,
         entity_embeddings: &HashMap<String, Vec<f32>>,
         relation_embeddings: &HashMap<String, Vec<f32>>,
         scoring_fn: ScoringFunction,
     ) -> Option<usize> {
-        let h_emb = entity_embeddings.get(head)?;
-        let r_emb = relation_embeddings.get(relation)?;
-        let true_tail_emb = entity_embeddings.get(true_tail)?;
+        let h_emb = entity_embeddings.get(head.as_str())?;
+        let r_emb = relation_embeddings.get(relation.as_str())?;
+        let true_tail_emb = entity_embeddings.get(true_tail.as_str())?;
 
         let true_score = scoring_fn.score(h_emb, r_emb, true_tail_emb);
 
         let mut rank = 1;
         for (entity, t_emb) in entity_embeddings {
             // Skip the true tail
-            if entity == true_tail {
+            if entity == true_tail.as_str() {
                 continue;
             }
 
             // Filter known triples
-            let candidate = EvalTriple::new(head, relation, entity.as_str());
+            let candidate = EvalTriple::new(head.clone(), relation.clone(), entity.as_str());
             if self.known_triples.contains(&candidate) {
                 continue;
             }
@@ -247,26 +277,26 @@ impl Evaluator {
     /// Ranks entities by score for (?, relation, tail), returns rank of true head.
     pub fn rank_head_filtered(
         &self,
-        true_head: &str,
-        relation: &str,
-        tail: &str,
+        true_head: &EntityId,
+        relation: &RelationType,
+        tail: &EntityId,
         entity_embeddings: &HashMap<String, Vec<f32>>,
         relation_embeddings: &HashMap<String, Vec<f32>>,
         scoring_fn: ScoringFunction,
     ) -> Option<usize> {
-        let t_emb = entity_embeddings.get(tail)?;
-        let r_emb = relation_embeddings.get(relation)?;
-        let true_head_emb = entity_embeddings.get(true_head)?;
+        let t_emb = entity_embeddings.get(tail.as_str())?;
+        let r_emb = relation_embeddings.get(relation.as_str())?;
+        let true_head_emb = entity_embeddings.get(true_head.as_str())?;
 
         let true_score = scoring_fn.score(true_head_emb, r_emb, t_emb);
 
         let mut rank = 1;
         for (entity, h_emb) in entity_embeddings {
-            if entity == true_head {
+            if entity == true_head.as_str() {
                 continue;
             }
 
-            let candidate = EvalTriple::new(entity.as_str(), relation, tail);
+            let candidate = EvalTriple::new(entity.as_str(), relation.clone(), tail.clone());
             if self.known_triples.contains(&candidate) {
                 continue;
             }
@@ -447,11 +477,15 @@ mod tests {
         // Distances: B -> 0, C -> ||[1,0] - [5,5]|| = sqrt(41)
         // B should rank 1
 
+        let head = EntityId::new("A");
+        let rel = RelationType::new("r");
+        let tail = EntityId::new("B");
+
         let rank = eval
             .rank_tail_filtered(
-                "A",
-                "r",
-                "B",
+                &head,
+                &rel,
+                &tail,
                 &entity_emb,
                 &relation_emb,
                 ScoringFunction::TransE,

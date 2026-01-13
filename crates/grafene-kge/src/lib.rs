@@ -147,12 +147,18 @@ pub mod training;
 #[cfg(feature = "onnx")]
 mod onnx;
 
+#[cfg(feature = "hyperbolic")]
+pub mod hyperbolic;
+
 pub use error::{Error, Result};
 pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
 pub use scoring::{LinkPredictionResult, ScoringFunction, TripleScore};
 
 #[cfg(feature = "onnx")]
 pub use onnx::{OnnxKGE, TransEOnnx};
+
+#[cfg(feature = "hyperbolic")]
+pub use hyperbolic::{HyperE, HyperEConfig, train_hypere};
 
 /// Trait for KG embedding models.
 pub trait KGEmbedding {

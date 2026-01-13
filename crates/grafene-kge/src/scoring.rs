@@ -19,13 +19,14 @@
 //!
 //! Enable `boxe` feature for BoxE support via `subsume` crate.
 
+use grafene_core::{EntityId, RelationType};
 use serde::{Deserialize, Serialize};
 
 /// Result of link prediction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LinkPredictionResult {
-    /// Entity ID or label.
-    pub entity: String,
+    /// Predicted entity.
+    pub entity: EntityId,
     /// Score (higher = more plausible).
     pub score: f32,
     /// Rank (1 = best).
@@ -35,12 +36,12 @@ pub struct LinkPredictionResult {
 /// Score for a triple.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TripleScore {
-    /// Head entity.
-    pub head: String,
-    /// Relation.
-    pub relation: String,
-    /// Tail entity.
-    pub tail: String,
+    /// Head entity (subject).
+    pub head: EntityId,
+    /// Relation (predicate).
+    pub relation: RelationType,
+    /// Tail entity (object).
+    pub tail: EntityId,
     /// Plausibility score.
     pub score: f32,
 }

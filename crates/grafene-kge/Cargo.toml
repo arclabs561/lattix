@@ -22,6 +22,7 @@ subsume-ndarray = { path = "../../../subsume/subsume-ndarray", optional = true }
 
 # Hyperbolic embeddings for tree-like hierarchies
 hyperball = { path = "../../../hyperball", optional = true }
+rand = { version = "0.9", optional = true }
 
 [features]
 default = []
@@ -30,7 +31,7 @@ ort = ["dep:ort"]
 # BoxE-style containment embeddings
 boxe = ["subsume-core", "subsume-ndarray"]
 # Hyperbolic KGE (MuRP, RotH, AttH style)
-hyperbolic = ["hyperball"]
+hyperbolic = ["hyperball", "rand"]
 # Training with proper optimizers (Adam, AdamW)
 training = ["subsume-ndarray"]
 

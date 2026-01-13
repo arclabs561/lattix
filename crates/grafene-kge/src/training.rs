@@ -118,25 +118,35 @@ impl TrainingConfig {
     }
 }
 
-/// A triple in a knowledge graph.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Triple {
-    /// Head entity identifier.
-    pub head: String,
-    /// Relation type identifier.
-    pub relation: String,
-    /// Tail entity identifier.
-    pub tail: String,
+// Re-export Triple from grafene_core for KGE training.
+// KGE literature uses (head, relation, tail); grafene_core uses (subject, predicate, object).
+// They're semantically equivalent:
+//   head = subject, relation = predicate, tail = object
+pub use grafene_core::Triple;
+
+/// Extension trait for KGE-style triple access.
+///
+/// KGE literature uses (head, relation, tail) terminology.
+/// This trait provides convenience accessors returning string slices
+/// for compatibility with embedding lookups.
+pub trait TripleKGE {
+    /// Head entity string (= subject).
+    fn head(&self) -> &str;
+    /// Relation string (= predicate).
+    fn rel(&self) -> &str;
+    /// Tail entity string (= object).
+    fn tail(&self) -> &str;
 }
 
-impl Triple {
-    /// Create a new triple.
-    pub fn new(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
-        Self {
-            head: head.into(),
-            relation: relation.into(),
-            tail: tail.into(),
-        }
+impl TripleKGE for Triple {
+    fn head(&self) -> &str {
+        self.subject.as_str()
+    }
+    fn rel(&self) -> &str {
+        self.predicate.as_str()
+    }
+    fn tail(&self) -> &str {
+        self.object.as_str()
     }
 }
 
@@ -172,9 +182,10 @@ impl KGETrainer {
         let mut relations = HashSet::new();
 
         for t in triples {
-            entities.insert(t.head.clone());
-            entities.insert(t.tail.clone());
-            relations.insert(t.relation.clone());
+            // Triple uses subject/predicate/object; KGE calls these head/relation/tail
+            entities.insert(t.subject.as_str().to_string());
+            entities.insert(t.object.as_str().to_string());
+            relations.insert(t.predicate.as_str().to_string());
         }
 
         (entities, relations)
@@ -247,9 +258,10 @@ impl KGETrainer {
                 let mut batch_loss = 0.0;
 
                 for triple in batch {
-                    let h = entity_emb.get(&triple.head).unwrap().clone();
-                    let r = relation_emb.get(&triple.relation).unwrap().clone();
-                    let t = entity_emb.get(&triple.tail).unwrap().clone();
+                    // Use TripleKGE trait for KGE-style access
+                    let h = entity_emb.get(triple.head()).unwrap().clone();
+                    let r = relation_emb.get(triple.rel()).unwrap().clone();
+                    let t = entity_emb.get(triple.tail()).unwrap().clone();
 
                     let pos_dist = transe_distance(&h, &r, &t);
 
@@ -257,7 +269,7 @@ impl KGETrainer {
                         let neg_idx = (epoch * 1000 + num_batches) % entities_vec.len();
                         let neg_tail = entities_vec[neg_idx];
 
-                        if neg_tail == &triple.tail {
+                        if neg_tail == triple.tail() {
                             continue;
                         }
 
@@ -270,17 +282,17 @@ impl KGETrainer {
                         if loss > 0.0 {
                             let lr = self.config.learning_rate;
 
-                            let h_mut = entity_emb.get_mut(&triple.head).unwrap();
+                            let h_mut = entity_emb.get_mut(triple.head()).unwrap();
                             for i in 0..self.config.embedding_dim {
                                 h_mut[i] -= lr * 2.0 * (h[i] + r[i] - t[i]);
                             }
 
-                            let t_mut = entity_emb.get_mut(&triple.tail).unwrap();
+                            let t_mut = entity_emb.get_mut(triple.tail()).unwrap();
                             for i in 0..self.config.embedding_dim {
                                 t_mut[i] -= lr * -2.0 * (h[i] + r[i] - t[i]);
                             }
 
-                            let r_mut = relation_emb.get_mut(&triple.relation).unwrap();
+                            let r_mut = relation_emb.get_mut(triple.rel()).unwrap();
                             for i in 0..self.config.embedding_dim {
                                 r_mut[i] -= lr * 2.0 * (h[i] + r[i] - t[i]);
                             }
@@ -413,9 +425,10 @@ pub mod adam {
                 let mut relation_grads: HashMap<String, Array1<f32>> = HashMap::new();
 
                 for triple in batch {
-                    let h = entity_emb.get(&triple.head).unwrap();
-                    let r = relation_emb.get(&triple.relation).unwrap();
-                    let t = entity_emb.get(&triple.tail).unwrap();
+                    // Use TripleKGE trait for KGE-style access
+                    let h = entity_emb.get(triple.head()).unwrap();
+                    let r = relation_emb.get(triple.rel()).unwrap();
+                    let t = entity_emb.get(triple.tail()).unwrap();
 
                     let pos_dist = transe_distance_ndarray(h, r, t);
 
@@ -424,7 +437,7 @@ pub mod adam {
                         let neg_idx = (epoch * 1000 + neg_i) % entities_vec.len();
                         let neg_tail = entities_vec[neg_idx];
 
-                        if neg_tail == &triple.tail {
+                        if neg_tail == triple.tail() {
                             continue;
                         }
 
@@ -445,9 +458,9 @@ pub mod adam {
                             let base_grad: Array1<f32> = diff.mapv(|x| x * grad_scale);
 
                             // Accumulate gradients
-                            accumulate_grad(&mut entity_grads, &triple.head, &base_grad, dim);
-                            accumulate_grad(&mut entity_grads, &triple.tail, &(-&base_grad), dim);
-                            accumulate_grad(&mut relation_grads, &triple.relation, &base_grad, dim);
+                            accumulate_grad(&mut entity_grads, triple.head(), &base_grad, dim);
+                            accumulate_grad(&mut entity_grads, triple.tail(), &(-&base_grad), dim);
+                            accumulate_grad(&mut relation_grads, triple.rel(), &base_grad, dim);
 
                             num_updates += 1;
                         }
@@ -760,11 +773,12 @@ pub mod boxe {
 
             for (batch_idx, batch) in triples.chunks(config.batch_size).enumerate() {
                 for triple in batch {
+                    // Use TripleKGE trait for KGE-style access
                     // Clone to avoid borrow conflicts
-                    let h = entity_points.get(&triple.head).unwrap().clone();
-                    let t = entity_points.get(&triple.tail).unwrap().clone();
-                    let (center, offset) = relation_boxes.get(&triple.relation).unwrap().clone();
-                    let bump = relation_bumps.get(&triple.relation).unwrap().clone();
+                    let h = entity_points.get(triple.head()).unwrap().clone();
+                    let t = entity_points.get(triple.tail()).unwrap().clone();
+                    let (center, offset) = relation_boxes.get(triple.rel()).unwrap().clone();
+                    let bump = relation_bumps.get(triple.rel()).unwrap().clone();
 
                     // Positive score: distance from (h + bump) to t, penalized by box violation
                     let pos_score = boxe_score_simple(&h, &t, &center, &offset, &bump);
@@ -772,7 +786,7 @@ pub mod boxe {
                     // Negative sample
                     let neg_idx = (epoch * 1000 + batch_idx) % entities_vec.len();
                     let neg_tail = &entities_vec[neg_idx];
-                    if neg_tail == &triple.tail {
+                    if neg_tail == triple.tail() {
                         continue;
                     }
                     let t_neg = entity_points.get(neg_tail).unwrap();
@@ -789,20 +803,20 @@ pub mod boxe {
                         // In production, use proper optimizers (Adam, AdamW)
 
                         // Update entity points
-                        let h_mut = entity_points.get_mut(&triple.head).unwrap();
+                        let h_mut = entity_points.get_mut(triple.head()).unwrap();
                         for i in 0..dim {
                             let grad = 2.0 * ((h[i] + bump[i]) - t[i]);
                             h_mut[i] -= lr * grad * 0.1;
                         }
 
-                        let t_mut = entity_points.get_mut(&triple.tail).unwrap();
+                        let t_mut = entity_points.get_mut(triple.tail()).unwrap();
                         for i in 0..dim {
                             let grad = -2.0 * ((h[i] + bump[i]) - t[i]);
                             t_mut[i] -= lr * grad * 0.1;
                         }
 
                         // Update relation bump
-                        let bump_mut = relation_bumps.get_mut(&triple.relation).unwrap();
+                        let bump_mut = relation_bumps.get_mut(triple.rel()).unwrap();
                         for i in 0..dim {
                             let grad = 2.0 * ((h[i] + bump[i]) - t[i]);
                             bump_mut[i] -= lr * grad * 0.1;
