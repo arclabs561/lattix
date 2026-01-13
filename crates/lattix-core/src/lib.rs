@@ -1,5 +1,6 @@
 // Allow minor clippy style warnings at crate level
 // These are mostly style preferences, not bugs
+#![allow(unused_results)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::derive_partial_eq_without_eq)]

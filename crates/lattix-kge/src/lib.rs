@@ -1,3 +1,6 @@
+// Allow unused results for research code - insert/update operations intentionally ignore return values
+#![allow(unused_results)]
+
 //! Knowledge Graph Embedding training and inference.
 //!
 //! Knowledge graphs store facts as (head, relation, tail) triples:

@@ -183,9 +183,9 @@ impl KGETrainer {
 
         for t in triples {
             // Triple uses subject/predicate/object; KGE calls these head/relation/tail
-            entities.insert(t.subject.as_str().to_string());
-            entities.insert(t.object.as_str().to_string());
-            relations.insert(t.predicate.as_str().to_string());
+            let _ = entities.insert(t.subject.as_str().to_string());
+            let _ = entities.insert(t.object.as_str().to_string());
+            let _ = relations.insert(t.predicate.as_str().to_string());
         }
 
         (entities, relations)
@@ -229,7 +229,7 @@ impl KGETrainer {
                 }
             }
 
-            embeddings.insert(item.clone(), embedding);
+            let _ = embeddings.insert(item.clone(), embedding);
         }
 
         embeddings
