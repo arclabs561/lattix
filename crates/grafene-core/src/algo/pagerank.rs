@@ -2,6 +2,39 @@
 //!
 //! Computes the importance of nodes based on link structure.
 //! Higher scores indicate more "important" nodes.
+//!
+//! # The Random Surfer Model
+//!
+//! Imagine a user clicking links randomly. PageRank(v) = probability
+//! the surfer is at node v after infinite random clicks.
+//!
+//! ```text
+//! PR(v) = (1-d)/N + d × Σᵤ PR(u)/L(u)
+//! ```
+//!
+//! Where:
+//! - d = damping factor (0.85)
+//! - N = total nodes
+//! - L(u) = outgoing links from u
+//!
+//! # Why Damping Factor?
+//!
+//! Without damping, rank accumulates in "sinks" (nodes with no outlinks).
+//! The damping factor models "teleportation": with probability 1-d (15%),
+//! the surfer jumps to a random page instead of following a link.
+//!
+//! This ensures convergence to a unique solution regardless of graph structure.
+//!
+//! # Mathematical Foundation
+//!
+//! PageRank is the **dominant left eigenvector** of a modified adjacency matrix.
+//! The power iteration algorithm computes this eigenvector iteratively:
+//!
+//! 1. Initialize: PR(v) = 1/N for all v
+//! 2. Update: PR(v) = (1-d)/N + d × Σᵤ PR(u)/L(u)
+//! 3. Repeat until ||PR_new - PR_old|| < tolerance
+//!
+//! Convergence rate depends on d but NOT on graph size—scales to billions of nodes.
 
 use crate::KnowledgeGraph;
 use std::collections::HashMap;
