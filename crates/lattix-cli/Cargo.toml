@@ -14,7 +14,8 @@ path = "src/main.rs"
 
 [dependencies]
 lattix = { path = "../lattix" }
-lattix-core = { path = "../lattix-core" }
+# CLI needs binary feature for .bin file support
+lattix-core = { path = "../lattix-core", features = ["binary"] }
 
 clap = { version = "4", features = ["derive"] }
 anyhow = { workspace = true }

@@ -1780,7 +1780,16 @@ mod tests {
         let device = Device::Cpu;
         let pn = PairNorm::new(1.0);
 
-        let x = Tensor::randn(0f32, 1f32, (5, 8), &device).unwrap();
+        // Use fixed data instead of random to avoid flaky tests
+        let x = Tensor::from_vec(
+            vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+                 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+                 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0,
+                 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+                 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5],
+            (5, 8), &device
+        ).unwrap();
+        
         let out = pn.forward(&x).unwrap();
 
         // After centering, mean should be close to zero
@@ -1788,7 +1797,7 @@ mod tests {
         let mean_vals = mean.to_vec1::<f32>().unwrap();
         
         for val in mean_vals {
-            assert!(val.abs() < 0.1, "Mean should be near zero after centering");
+            assert!(val.abs() < 0.1, "Mean should be near zero after centering, got {}", val);
         }
     }
 
