@@ -1,46 +1,110 @@
 //! Knowledge Graph Embedding inference.
 //!
-//! This crate provides inference for pre-trained KG embedding models:
+//! Knowledge graphs store facts as (head, relation, tail) triples:
+//! `(Einstein, won, NobelPrize)`, `(Paris, capitalOf, France)`.
+//! KGE models learn low-dimensional vector representations where
+//! **geometric operations on embeddings predict missing links**.
 //!
-//! - TransE
-//! - RotatE
-//! - ComplEx
-//! - DistMult
+//! ## The Core Intuition
 //!
-//! Models are trained in Python (PyKEEN, PyG) and exported to ONNX format
-//! for inference in Rust.
+//! Each model encodes a different geometric hypothesis about how
+//! relations transform entities:
 //!
-//! # Example
+//! | Model | Hypothesis | Geometric Operation |
+//! |-------|------------|---------------------|
+//! | TransE | Relations are translations | h + r ≈ t |
+//! | RotatE | Relations are rotations | h ∘ r ≈ t |
+//! | DistMult | Relations are scalings | <h, r, t> |
+//! | ComplEx | Asymmetric relations | Re(<h, r, conj(t)>) |
+//!
+//! ## TransE: Relations as Translations
+//!
+//! The simplest and most influential model ([Bordes et al. 2013](https://papers.nips.cc/paper/2013/hash/1cecc7a77928ca8133fa24680a88d2f9-Abstract.html)).
+//!
+//! **Idea**: If (h, r, t) is true, then h + r ≈ t in embedding space.
+//!
+//! ```text
+//!   h ----r----> t
+//!   |            |
+//!   v            v
+//!  [0.2, 0.5] + [0.3, 0.1] ≈ [0.5, 0.6]
+//! ```
+//!
+//! **Scoring**: -||h + r - t||₂ (lower distance = more plausible)
+//!
+//! **Limitation**: Can't model symmetric relations (husband/wife) or
+//! composition (grandparent = parent ∘ parent).
+//!
+//! ## RotatE: Relations as Rotations
+//!
+//! [Sun et al. 2019](https://arxiv.org/abs/1902.10197) models relations
+//! as rotations in complex space.
+//!
+//! **Idea**: Each relation rotates entity embeddings by an angle θ.
+//!
+//! ```text
+//! h ∘ r = t    where r = e^(iθ)
+//! ```
+//!
+//! In complex multiplication: (a + bi)(cos θ + i sin θ) rotates by θ.
+//!
+//! **Why rotation?** It can model:
+//! - **Symmetric relations**: 180° rotation (r ∘ r = identity)
+//! - **Inverse relations**: -θ rotation
+//! - **Composition**: Angles add (parent ∘ parent = grandparent)
+//!
+//! ## DistMult: Bilinear Diagonal
+//!
+//! [Yang et al. 2015](https://arxiv.org/abs/1412.6575) uses element-wise
+//! product (Hadamard product).
+//!
+//! **Scoring**: Σᵢ hᵢ × rᵢ × tᵢ
+//!
+//! **Limitation**: Symmetric by construction—predicts (h, r, t) = (t, r, h).
+//! Can't distinguish "parent_of" from "child_of".
+//!
+//! ## ComplEx: Complex Embeddings
+//!
+//! [Trouillon et al. 2016](https://arxiv.org/abs/1606.06357) extends
+//! DistMult to complex space to handle asymmetry.
+//!
+//! **Scoring**: Re(<h, r, conj(t)>) where conj is complex conjugate.
+//!
+//! The conjugate breaks symmetry: (h, r, t) ≠ (t, r, h) in general.
+//!
+//! ## Usage
 //!
 //! ```rust,ignore
-//! use grafene_embed::TransE;
+//! use grafene_kge::{ScoringFunction, KGEmbedding};
 //!
-//! // Load pre-trained model
-//! let model = TransE::from_onnx("transE.onnx")?;
+//! // Score using raw embeddings
+//! let h = vec![1.0, 0.0, 0.5];
+//! let r = vec![0.0, 1.0, 0.0];
+//! let t = vec![1.0, 1.0, 0.5];
 //!
-//! // Score a triple
-//! let score = model.score("Apple", "founded_by", "Steve Jobs")?;
-//!
-//! // Link prediction: find likely objects for (Apple, founded_by, ?)
-//! let candidates = model.predict_object("Apple", "founded_by", 10)?;
+//! let score = ScoringFunction::TransE.score(&h, &r, &t);
+//! // score ≈ 0 means h + r ≈ t (plausible triple)
 //! ```
 //!
-//! # Training
+//! ## Training
 //!
-//! Models should be trained using PyKEEN and exported:
+//! Models are trained in Python (PyKEEN, PyG) and exported to ONNX:
 //!
-//! ```python
+//! ```python,ignore
 //! from pykeen.pipeline import pipeline
-//! from pykeen.models import TransE
-//! import torch
 //!
-//! # Train
 //! result = pipeline(model='TransE', dataset='FB15k-237')
-//! model = result.model
-//!
-//! # Export to ONNX
-//! torch.onnx.export(model, ..., "transE.onnx")
+//! # Export to ONNX for Rust inference
 //! ```
+//!
+//! ## References
+//!
+//! - Bordes et al. (2013). "Translating Embeddings for Modeling
+//!   Multi-relational Data." NIPS.
+//! - Sun et al. (2019). "RotatE: Knowledge Graph Embedding by
+//!   Relational Rotation in Complex Space." ICLR.
+//! - Trouillon et al. (2016). "Complex Embeddings for Simple Link
+//!   Prediction." ICML.
 
 mod error;
 mod scoring;
