@@ -1,13 +1,19 @@
-# grafene
+<p align="center"><b>lattix</b></p>
+
+```mermaid
+graph LR
+    A[Apple] -->|founded_by| S[Steve Jobs]
+    A -->|produces| I[iPhone]
+    S -->|worked_at| A
+    I -->|designed_at| A
+```
 
 Knowledge graph construction, analysis, and embedding inference.
 
 Dual-licensed under MIT or Apache-2.0.
 
-![KG Structure](hack/viz/kg_structure.png)
-
 ```rust
-use grafene_core::{KnowledgeGraph, Triple};
+use lattix_core::{KnowledgeGraph, Triple};
 
 let mut kg = KnowledgeGraph::new();
 kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
@@ -18,13 +24,19 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 }
 ```
 
-## Features
+## Crates
 
-- **Core**: Efficient graph storage, PageRank, Random Walks (Node2Vec)
-- **Temporal**: Time-aware graph queries (`grafene-temporal`)
-- **KGE**: Knowledge Graph Embeddings (`grafene-kge`)
-  - **BoxE**: Containment embeddings (via `subsume`)
-  - **Hyperbolic**: Hierarchy embeddings (via `hyperball`)
-  - **ONNX**: TransE, RotatE, ComplEx (via ONNX)
+| Crate | Purpose |
+|-------|---------|
+| `lattix-core` | Graph storage, PageRank, Random Walks |
+| `lattix-nn` | Node2Vec, GNN layers |
+| `lattix-kge` | Knowledge Graph Embeddings (TransE, RotatE) |
+| `lattix-temporal` | Time-aware graph queries |
+| `lattix-cli` | Command-line interface |
+| `lattix-py` | Python bindings |
 
-See [`docs/README_DETAILED.md`](docs/README_DETAILED.md) for full features and architecture.
+## Embedding Backends
+
+- **BoxE**: Containment embeddings (via `subsume`)
+- **Hyperbolic**: Hierarchy embeddings (via `hyperball`)
+- **ONNX**: TransE, RotatE, ComplEx inference
