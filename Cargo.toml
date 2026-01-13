@@ -81,14 +81,7 @@ semicolon_in_expressions_from_macros = "warn"
 unsafe_op_in_unsafe_fn = "warn"
 unused_macro_rules = "warn"
 
-# Local development overrides - use sibling repos when available
-# Comment out for CI or when testing standalone builds
-[patch."https://github.com/arclabs561/hyperball.git"]
-hyperball = { path = "../hyperball" }
-
-[patch."https://github.com/arclabs561/subsume.git"]
-subsume-core = { path = "../subsume/subsume-core" }
-subsume-ndarray = { path = "../subsume/subsume-ndarray" }
+# Local development: see .cargo/config.toml.example for path overrides
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }
