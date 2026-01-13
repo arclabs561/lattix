@@ -21,10 +21,10 @@ Knowledge graph construction, analysis, and embedding inference in Rust.
 ```
 lattice/
 ├── crates/
-│   ├── nexus-core/    # Core types, formats, algorithms
-│   ├── nexus-embed/   # KGE inference (ONNX)
-│   ├── nexus-cli/     # Command-line interface
-│   ├── nexus-py/      # Python bindings (maturin)
+│   ├── grafene-core/    # Core types, formats, algorithms
+│   ├── grafene-embed/   # KGE inference (ONNX)
+│   ├── grafene-cli/     # Command-line interface
+│   ├── grafene-py/      # Python bindings (maturin)
 │   └── lattice/         # Facade crate (re-exports)
 ```
 
@@ -32,16 +32,16 @@ lattice/
 
 ```toml
 [dependencies]
-nexus = "0.1"
+grafene = "0.1"
 
 # With ONNX inference
-nexus-embed = { version = "0.1", features = ["onnx"] }
+grafene-embed = { version = "0.1", features = ["onnx"] }
 ```
 
 ## CLI
 
 ```bash
-cargo install --path crates/nexus-cli
+cargo install --path crates/grafene-cli
 
 # Statistics
 lattice stats graph.nt
@@ -75,7 +75,7 @@ lattice relations graph.nt
 ### Knowledge Graph
 
 ```rust
-use nexus_core::{KnowledgeGraph, Triple};
+use grafene_core::{KnowledgeGraph, Triple};
 
 let mut kg = KnowledgeGraph::new();
 
@@ -100,7 +100,7 @@ println!("{} entities, {} triples", stats.entity_count, stats.triple_count);
 ### RDF Formats
 
 ```rust
-use nexus_core::formats::{NTriples, Turtle, JsonLd, Csv};
+use grafene_core::formats::{NTriples, Turtle, JsonLd, Csv};
 
 // Load
 let kg = KnowledgeGraph::from_ntriples_file("graph.nt")?;
@@ -114,7 +114,7 @@ let jsonld = JsonLd::to_string(&kg)?;
 ### Random Walks
 
 ```rust
-use nexus_core::algo::random_walk::{generate_walks, RandomWalkConfig};
+use grafene_core::algo::random_walk::{generate_walks, RandomWalkConfig};
 
 let config = RandomWalkConfig {
     walk_length: 80,
@@ -131,7 +131,7 @@ let walks: Vec<Vec<String>> = generate_walks(&kg, config);
 ### PageRank
 
 ```rust
-use nexus_core::algo::pagerank::{pagerank, PageRankConfig};
+use grafene_core::algo::pagerank::{pagerank, PageRankConfig};
 
 let scores = pagerank(&kg, PageRankConfig::default());
 let mut sorted: Vec<_> = scores.into_iter().collect();
@@ -145,7 +145,7 @@ for (entity, score) in sorted.iter().take(10) {
 ### Connected Components
 
 ```rust
-use nexus_core::algo::components::{connected_components, component_stats};
+use grafene_core::algo::components::{connected_components, component_stats};
 
 let components = connected_components(&kg);
 let stats = component_stats(&components);
@@ -167,7 +167,7 @@ let kg = KnowledgeGraph::from_binary_file("graph.bin")?;
 Build with maturin:
 
 ```bash
-cd crates/nexus-py
+cd crates/grafene-py
 maturin develop --release
 ```
 

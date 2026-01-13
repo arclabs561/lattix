@@ -1,0 +1,14 @@
+[package]
+name = "grafene-py"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "grafene"
+crate-type = ["cdylib"]
+doc = false
+
+[dependencies]
+grafene-core = { path = "../grafene-core", features = ["algo", "formats"] }
+pyo3 = { version = "0.20", features = ["extension-module"] }

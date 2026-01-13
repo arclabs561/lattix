@@ -2,12 +2,12 @@
 # Graph Learning Stack: GNN, Knowledge Graphs, Temporal Graphs
 #
 # Crates:
-#   nexus-core     - Triple, Entity, Graph types, algorithms
-#   nexus-gnn      - GNN layers (GCN, GAT), Node2Vec, KGE scoring
-#   nexus-temporal - Temporal graph primitives
-#   nexus-embed    - KGE inference (ONNX)
-#   nexus          - Facade crate
-#   nexus-py       - Python bindings
+#   grafene-core     - Triple, Entity, Graph types, algorithms
+#   grafene-nn       - GNN layers (GCN, GAT), Node2Vec
+#   grafene-kge      - KGE inference (TransE, RotatE, ONNX)
+#   grafene-temporal - Temporal graph primitives
+#   grafene          - Facade crate
+#   grafene-py       - Python bindings
 #
 members = [
     "crates/*",
@@ -20,9 +20,9 @@ edition = "2021"
 rust-version = "1.74"
 license = "MIT OR Apache-2.0"
 authors = ["Arc <attobop@gmail.com>"]
-repository = "https://github.com/arclabs561/nexus"
-homepage = "https://github.com/arclabs561/nexus"
-documentation = "https://docs.rs/nexus"
+repository = "https://github.com/arclabs561/grafene"
+homepage = "https://github.com/arclabs561/grafene"
+documentation = "https://docs.rs/grafene"
 
 [workspace.dependencies]
 # Serialization

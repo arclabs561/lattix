@@ -1,0 +1,28 @@
+[package]
+name = "grafene-kge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Knowledge Graph Embeddings: TransE, RotatE, ComplEx, DistMult - inference via ONNX"
+publish = false
+
+[dependencies]
+grafene-core = { path = "../grafene-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ort = { optional = true, version = "2.0.0-rc", features = ["ndarray"] }
+ndarray = "0.17.2"
+
+[features]
+default = []
+onnx = ["ort"]
+ort = ["dep:ort"]
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true
