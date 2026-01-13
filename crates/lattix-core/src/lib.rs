@@ -144,8 +144,21 @@
 //!
 //! # Algorithms
 //!
+//! ## Centrality ([`algo::centrality`])
+//!
+//! | Algorithm | Question | Module |
+//! |-----------|----------|--------|
+//! | Degree | How many connections? | [`algo::centrality::degree_centrality`] |
+//! | Betweenness | Bridge between communities? | [`algo::centrality::betweenness_centrality`] |
+//! | Closeness | How close to everyone? | [`algo::centrality::closeness_centrality`] |
+//! | Eigenvector | Connected to important nodes? | [`algo::centrality::eigenvector_centrality`] |
+//! | Katz | Reachable via damped paths? | [`algo::centrality::katz_centrality`] |
+//! | PageRank | Random walk equilibrium? | [`algo::pagerank::pagerank`] |
+//! | HITS | Hub or authority? | [`algo::centrality::hits`] |
+//!
+//! ## Other Algorithms
+//!
 //! - [`algo::random_walk`] - Node2Vec style random walks (biased BFS/DFS)
-//! - [`algo::pagerank`] - PageRank centrality (importance ranking)
 //! - [`algo::components`] - Connected components (graph structure)
 //! - [`algo::sampling`] - Neighbor sampling for mini-batch GNN training
 //!
