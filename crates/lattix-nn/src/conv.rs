@@ -1249,6 +1249,283 @@ impl MPNNConv {
     }
 }
 
+/// PairNorm: Graph normalization to mitigate over-smoothing.
+///
+/// Over-smoothing is the phenomenon where node representations converge to
+/// indistinguishable values as GNN depth increases. PairNorm (Zhao et al., 2019)
+/// addresses this by maintaining representation diversity.
+///
+/// # The Over-Smoothing Problem
+///
+/// Each GNN layer performs a weighted average of neighbor features:
+///
+/// ```text
+/// h_i^{(k+1)} = AGG({h_j^{(k)} : j in N(i)})
+/// ```
+///
+/// As k increases, all nodes eventually converge to the same representation
+/// (the dominant eigenvector of the propagation matrix). This limits GNN depth
+/// to typically 2-4 layers.
+///
+/// | Layers | Typical Behavior |
+/// |--------|------------------|
+/// | 1-2 | Good discrimination, limited receptive field |
+/// | 3-4 | Often optimal for node classification |
+/// | 5+ | Over-smoothing degrades performance |
+///
+/// # PairNorm's Solution
+///
+/// PairNorm applies two operations:
+///
+/// ## 1. Center (subtract global mean)
+///
+/// ```text
+/// h_i' = h_i - mean(h)
+/// ```
+///
+/// This prevents the mean from drifting toward a constant.
+///
+/// ## 2. Scale (row-wise normalization)
+///
+/// ```text
+/// h_i'' = s * h_i' / ||h_i'||
+/// ```
+///
+/// Where s is a learned or fixed scale factor. This maintains consistent
+/// embedding magnitudes.
+///
+/// # Mathematical Intuition
+///
+/// PairNorm ensures that the **total pairwise squared distance** between
+/// node representations remains constant:
+///
+/// ```text
+/// Σ_{i,j} ||h_i - h_j||² = constant
+/// ```
+///
+/// This directly prevents the "collapse" where all representations converge.
+///
+/// # Variants
+///
+/// | Mode | Center | Scale | Use Case |
+/// |------|--------|-------|----------|
+/// | PN (default) | Global | Row | General purpose |
+/// | PN-SI | None | Global | When centering hurts |
+/// | PN-SCS | Per-cluster | Row | Heterogeneous graphs |
+///
+/// # When to Use
+///
+/// - Deep GNNs (>4 layers)
+/// - Tasks where receptive field matters
+/// - When standard GCN/GAT performance degrades with depth
+///
+/// # When NOT to Use
+///
+/// - Shallow networks (2-3 layers) - overhead without benefit
+/// - When over-smoothing isn't a problem
+/// - Tasks where smoothing is desirable (e.g., denoising)
+///
+/// # Reference
+///
+/// Zhao & Akoglu, "PairNorm: Tackling Oversmoothing in GNNs", ICLR 2020.
+///
+/// See also: ContraNorm (2023), which uses contrastive learning instead.
+pub struct PairNorm {
+    /// Scale factor (s in the paper)
+    scale: f32,
+    /// Whether to apply centering
+    center: bool,
+}
+
+impl PairNorm {
+    /// Create a new PairNorm layer with default settings.
+    ///
+    /// # Arguments
+    ///
+    /// - `scale`: Scale factor for normalized representations. Default: 1.0.
+    ///   Larger values spread representations further apart.
+    ///
+    /// # Default Behavior
+    ///
+    /// Uses PN mode: global centering + row-wise scaling.
+    pub fn new(scale: f32) -> Self {
+        Self {
+            scale,
+            center: true,
+        }
+    }
+
+    /// Create PairNorm without centering (PN-SI mode).
+    ///
+    /// Useful when centering hurts performance, e.g., when global statistics
+    /// carry important information.
+    pub fn without_centering(scale: f32) -> Self {
+        Self {
+            scale,
+            center: false,
+        }
+    }
+
+    /// Apply PairNorm to node representations.
+    ///
+    /// # Arguments
+    ///
+    /// - `x`: Node representations (N x d)
+    ///
+    /// # Returns
+    ///
+    /// Normalized representations (N x d)
+    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+        // Center: subtract global mean
+        let h = if self.center {
+            let mean = x.mean(0)?;  // (d,)
+            x.broadcast_sub(&mean)?
+        } else {
+            x.clone()
+        };
+
+        // Scale: row-wise L2 normalization
+        // ||h_i|| = sqrt(sum(h_i^2))
+        let norm = h.sqr()?.sum(1)?.sqrt()?;  // (N,)
+        let norm = norm.reshape((norm.elem_count(), 1))?;
+        
+        // Avoid division by zero
+        let norm = (norm + 1e-6)?;
+        
+        // h_i / ||h_i|| * scale
+        let normalized = h.broadcast_div(&norm)?;
+        normalized * self.scale as f64
+    }
+}
+
+/// Jumping Knowledge Network: aggregate across GNN layers.
+///
+/// JK-Net (Xu et al., 2018) addresses over-smoothing by adaptively combining
+/// representations from **all** GNN layers, not just the final one. This
+/// allows the network to choose the appropriate scope for each node.
+///
+/// # The Insight
+///
+/// Different nodes need different receptive field sizes:
+///
+/// - **Hub nodes** (high degree) need local information—distant nodes are noise.
+/// - **Peripheral nodes** (low degree) need broader context for signal.
+///
+/// Standard GNNs apply the same depth to all nodes. JK-Net adapts per-node.
+///
+/// # Aggregation Strategies
+///
+/// Given layer representations h^{(1)}, ..., h^{(K)}:
+///
+/// ## Concatenation (JK-Cat)
+///
+/// ```text
+/// h_final = [h^{(1)} || h^{(2)} || ... || h^{(K)}]
+/// ```
+///
+/// Most expressive but increases dimension by K×.
+///
+/// ## Max Pooling (JK-Max)
+///
+/// ```text
+/// h_final[i] = max(h^{(1)}[i], h^{(2)}[i], ..., h^{(K)}[i])
+/// ```
+///
+/// Element-wise max preserves dimension, captures strongest signals.
+///
+/// ## LSTM Attention (JK-LSTM)
+///
+/// ```text
+/// h_final = LSTM(h^{(1)}, h^{(2)}, ..., h^{(K)})
+/// ```
+///
+/// Learns to weight layers, most flexible but most parameters.
+///
+/// # When to Use
+///
+/// - Deep GNNs where intermediate layers may be optimal for some nodes
+/// - Heterogeneous graphs with varying local structure
+/// - When you can afford increased parameters (especially JK-Cat)
+///
+/// # Reference
+///
+/// Xu et al., "Representation Learning on Graphs with Jumping Knowledge
+/// Networks", ICML 2018.
+pub struct JumpingKnowledge {
+    /// Aggregation mode
+    mode: JKMode,
+}
+
+/// Aggregation mode for Jumping Knowledge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JKMode {
+    /// Concatenate all layers: output dim = K * input_dim
+    Concat,
+    /// Element-wise maximum: output dim = input_dim
+    Max,
+    /// Sum all layers: output dim = input_dim
+    Sum,
+    /// Mean of all layers: output dim = input_dim  
+    Mean,
+}
+
+impl JumpingKnowledge {
+    /// Create a new JumpingKnowledge aggregator.
+    pub fn new(mode: JKMode) -> Self {
+        Self { mode }
+    }
+
+    /// Aggregate representations from multiple GNN layers.
+    ///
+    /// # Arguments
+    ///
+    /// - `layer_outputs`: Vector of tensors, one per GNN layer.
+    ///   Each tensor is (N x d) where N = nodes, d = feature dimension.
+    ///
+    /// # Returns
+    ///
+    /// Aggregated representation:
+    /// - Concat: (N x K*d)
+    /// - Max/Sum/Mean: (N x d)
+    pub fn forward(&self, layer_outputs: &[Tensor]) -> Result<Tensor> {
+        if layer_outputs.is_empty() {
+            return Err(candle_core::Error::Msg("No layer outputs provided".to_string()));
+        }
+
+        match self.mode {
+            JKMode::Concat => {
+                // Concatenate along feature dimension
+                let outputs: Vec<&Tensor> = layer_outputs.iter().collect();
+                Tensor::cat(&outputs, 1)
+            }
+            JKMode::Max => {
+                // Element-wise maximum across layers
+                let mut result = layer_outputs[0].clone();
+                for layer in layer_outputs.iter().skip(1) {
+                    result = result.maximum(layer)?;
+                }
+                Ok(result)
+            }
+            JKMode::Sum => {
+                // Sum across layers
+                let mut result = layer_outputs[0].clone();
+                for layer in layer_outputs.iter().skip(1) {
+                    result = (&result + layer)?;
+                }
+                Ok(result)
+            }
+            JKMode::Mean => {
+                // Mean across layers
+                let mut result = layer_outputs[0].clone();
+                for layer in layer_outputs.iter().skip(1) {
+                    result = (&result + layer)?;
+                }
+                result / layer_outputs.len() as f64
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1484,6 +1761,103 @@ mod tests {
 
             let out = mpnn.forward(&x, &edge_index, None).unwrap();
             assert_eq!(out.dims(), &[3, 8]);
+        }
+    }
+
+    #[test]
+    fn test_pairnorm_preserves_shape() {
+        let device = Device::Cpu;
+        let pn = PairNorm::new(1.0);
+
+        let x = Tensor::randn(0f32, 1f32, (10, 32), &device).unwrap();
+        let out = pn.forward(&x).unwrap();
+
+        assert_eq!(out.dims(), x.dims());
+    }
+
+    #[test]
+    fn test_pairnorm_centers_features() {
+        let device = Device::Cpu;
+        let pn = PairNorm::new(1.0);
+
+        let x = Tensor::randn(0f32, 1f32, (5, 8), &device).unwrap();
+        let out = pn.forward(&x).unwrap();
+
+        // After centering, mean should be close to zero
+        let mean = out.mean(0).unwrap();
+        let mean_vals = mean.to_vec1::<f32>().unwrap();
+        
+        for val in mean_vals {
+            assert!(val.abs() < 0.1, "Mean should be near zero after centering");
+        }
+    }
+
+    #[test]
+    fn test_pairnorm_without_centering() {
+        let device = Device::Cpu;
+        let pn = PairNorm::without_centering(2.0);
+
+        let x = Tensor::randn(0f32, 1f32, (5, 8), &device).unwrap();
+        let out = pn.forward(&x).unwrap();
+
+        assert_eq!(out.dims(), x.dims());
+    }
+
+    #[test]
+    fn test_jumping_knowledge_concat() {
+        let device = Device::Cpu;
+        let jk = JumpingKnowledge::new(JKMode::Concat);
+
+        let layer1 = Tensor::ones((5, 8), DType::F32, &device).unwrap();
+        let layer2 = Tensor::ones((5, 8), DType::F32, &device).unwrap();
+        let layer3 = Tensor::ones((5, 8), DType::F32, &device).unwrap();
+
+        let out = jk.forward(&[layer1, layer2, layer3]).unwrap();
+        
+        // Concat: 3 layers x 8 features = 24
+        assert_eq!(out.dims(), &[5, 24]);
+    }
+
+    #[test]
+    fn test_jumping_knowledge_max() {
+        let device = Device::Cpu;
+        let jk = JumpingKnowledge::new(JKMode::Max);
+
+        let layer1 = Tensor::ones((5, 8), DType::F32, &device).unwrap();
+        let layer2 = (Tensor::ones((5, 8), DType::F32, &device).unwrap() * 2.0).unwrap();
+
+        let out = jk.forward(&[layer1, layer2]).unwrap();
+        
+        // Max preserves shape
+        assert_eq!(out.dims(), &[5, 8]);
+        
+        // Values should be close to 2.0 (the max)
+        let vals = out.to_vec2::<f32>().unwrap();
+        for row in &vals {
+            for &v in row {
+                assert!((v - 2.0).abs() < 0.01);
+            }
+        }
+    }
+
+    #[test]
+    fn test_jumping_knowledge_mean() {
+        let device = Device::Cpu;
+        let jk = JumpingKnowledge::new(JKMode::Mean);
+
+        let layer1 = Tensor::ones((3, 4), DType::F32, &device).unwrap();
+        let layer2 = (Tensor::ones((3, 4), DType::F32, &device).unwrap() * 3.0).unwrap();
+
+        let out = jk.forward(&[layer1, layer2]).unwrap();
+        
+        assert_eq!(out.dims(), &[3, 4]);
+        
+        // Mean of 1.0 and 3.0 = 2.0
+        let vals = out.to_vec2::<f32>().unwrap();
+        for row in &vals {
+            for &v in row {
+                assert!((v - 2.0).abs() < 0.01);
+            }
         }
     }
 }
