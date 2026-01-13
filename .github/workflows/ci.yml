@@ -37,7 +37,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.75.0
       - uses: Swatinem/rust-cache@v2
 
+      # Note: lattix-kge depends on candle which requires Rust 1.80+ (rayon 1.11)
+      # MSRV check only tests core crates
       - name: Check MSRV
         run: |
           rm -f Cargo.lock  # v4 lock file requires Cargo 1.83+
-          cargo check --workspace
+          cargo check -p lattix-core
+          cargo check -p lattix-temporal
