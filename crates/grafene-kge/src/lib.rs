@@ -140,6 +140,7 @@
 //!   Prediction." ICML.
 
 mod error;
+pub mod evaluation;
 mod scoring;
 pub mod training;
 
@@ -147,6 +148,7 @@ pub mod training;
 mod onnx;
 
 pub use error::{Error, Result};
+pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
 pub use scoring::{LinkPredictionResult, ScoringFunction, TripleScore};
 
 #[cfg(feature = "onnx")]
