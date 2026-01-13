@@ -39,7 +39,7 @@ training = ["subsume-ndarray"]
 burn = ["dep:burn"]
 
 [dependencies.burn]
-version = "0.16"
+version = "0.19"
 optional = true
 default-features = false
 features = ["ndarray", "autodiff"]

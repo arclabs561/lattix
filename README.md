@@ -1,28 +1,30 @@
 # grafene
 
-Graph + knowledge graph workspace for Rust (formats, algorithms, embeddings, CLI).
+Knowledge graph construction, analysis, and embedding inference.
 
-## Structure
+Dual-licensed under MIT or Apache-2.0.
 
-This repo is a workspace. See `crates/` for the individual crates.
+![KG Structure](hack/viz/kg_structure.png)
 
-## CLI
+```rust
+use grafene_core::{KnowledgeGraph, Triple};
 
-The `grafene-cli` crate builds the `grafene` binary:
+let mut kg = KnowledgeGraph::new();
+kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
 
-```bash
-cargo install --path crates/grafene-cli
-
-grafene --help
+// Find path: Apple -> founded_by -> Steve Jobs
+if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
+    println!("Path: {} hops", path.len());
+}
 ```
 
-## Library
+## Features
 
-```toml
-[dependencies]
-grafene = "0.1"
-```
+- **Core**: Efficient graph storage, PageRank, Random Walks (Node2Vec)
+- **Temporal**: Time-aware graph queries (`grafene-temporal`)
+- **KGE**: Knowledge Graph Embeddings (`grafene-kge`)
+  - **BoxE**: Containment embeddings (via `subsume`)
+  - **Hyperbolic**: Hierarchy embeddings (via `hyperball`)
+  - **ONNX**: TransE, RotatE, ComplEx (via ONNX)
 
-## License
-
-See `LICENSE`.
+See [`docs/README_DETAILED.md`](docs/README_DETAILED.md) for full features and architecture.
