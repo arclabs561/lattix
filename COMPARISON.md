@@ -25,11 +25,11 @@
 | **Role** | Pre-processing / Inference / Embedding Gen | Model Training / GNN Architectures |
 | **Embeddings** | Shallow (TransE, Node2Vec) | Deep (GCN, GAT, GraphSAGE) |
 | **Inference** | ONNX Runtime (CPU/GPU) | PyTorch (CPU/GPU) |
-| **Integration** | `grafene-py` bindings | Native Python |
+| **Integration** | `lattix-py` bindings | Native Python |
 
 **Summary:** `lattice` complements PyG.
 1.  **Data Loading:** `lattice` can efficiently parse massive RDF datasets, sample neighbors (`lattice.sample_neighbors`), and export edge lists or walks for PyG to consume.
-2.  **Inference:** `grafene-embed` allows running trained KGE models (exported to ONNX) in production Rust environments without the heavy PyTorch dependency.
+2.  **Inference:** `lattix-embed` allows running trained KGE models (exported to ONNX) in production Rust environments without the heavy PyTorch dependency.
 
 ## vs. NetworkX
 **URL:** https://networkx.org/
@@ -41,7 +41,7 @@
 | **Scale** | Medium/Large (Millions of nodes) | Small/Medium (<100k nodes) |
 | **RDF Support** | Native (Rio) | Via plugins (rdflib) |
 
-**Summary:** `lattice` is a performant alternative to NetworkX for heavy lifting (walks, PageRank) on larger KGs, while exposing a Python API (`grafene-py`) that feels similar to use.
+**Summary:** `lattice` is a performant alternative to NetworkX for heavy lifting (walks, PageRank) on larger KGs, while exposing a Python API (`lattix-py`) that feels similar to use.
 
 ## vs. node2vec-rs
 **URL:** https://github.com/GregorLueg/node2vec-rs

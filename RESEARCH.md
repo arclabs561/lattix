@@ -11,8 +11,8 @@
 - **Documentation:** Uses `mdBook` in `book/` directory.
 
 **Relevance to `lattice`:**
-- `grafene::KnowledgeGraph` is currently a specific implementation (petgraph-backed).
-- Implementing `sophia::graph::Graph` for `grafene::KnowledgeGraph` would allow `lattice` to plug into the wider ecosystem (serializers, reasoners, etc.).
+- `lattix::KnowledgeGraph` is currently a specific implementation (petgraph-backed).
+- Implementing `sophia::graph::Graph` for `lattix::KnowledgeGraph` would allow `lattice` to plug into the wider ecosystem (serializers, reasoners, etc.).
 - **Recommendation:** Study `sophia` traits and consider implementing them in a `lattice-sophia` crate or feature.
 
 ## Rio
@@ -25,9 +25,9 @@
 - **Layout:** Flat workspace (`api`, `turtle`, `xml` at root).
 
 **Relevance to `lattice`:**
-- `grafene-core` currently implements a manual N-Triples parser.
+- `lattix-core` currently implements a manual N-Triples parser.
 - Switching to `rio_turtle` and `rio_xml` would provide robust, fast parsing for all RDF formats immediately.
-- **Recommendation:** Replace custom parsing logic in `grafene-core` with `rio` parsers. (Done)
+- **Recommendation:** Replace custom parsing logic in `lattix-core` with `rio` parsers. (Done)
 
 ## Node2Vec-rs
 **URL:** https://github.com/GregorLueg/node2vec-rs
@@ -65,7 +65,7 @@
         3.  **Alias Sampling**: Implement Alias method for O(1) sampling if memory allows.
 
 ## Actionable Plan
-1.  **Refactor Parsing:** Use `rio` in `grafene-core` for N-Triples/Turtle parsing. (Completed)
+1.  **Refactor Parsing:** Use `rio` in `lattix-core` for N-Triples/Turtle parsing. (Completed)
 2.  **Standardize Interfaces:** Investigate implementing `sophia` traits. (Future)
 3.  **Performance:** `lattice`'s parallel random walks (`rayon`) is a good start; verify performance against `pecanpy` benchmarks (if possible) or just ensure it saturates cores.
 4.  **Structure:** Maintain `crates/` layout for cleanliness. Ensure all dependencies are managed via workspace.
