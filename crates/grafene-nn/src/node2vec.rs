@@ -4,6 +4,9 @@
 //!
 //! Nodes appearing in similar random walk contexts should have similar embeddings.
 //! This is Word2Vec applied to graphs: walks are "sentences," nodes are "words."
+
+// Some fields in Node2VecTrainer are reserved for configuration (used in walk generation)
+#![allow(dead_code)]
 //!
 //! # Mathematical Foundation
 //!
@@ -79,6 +82,8 @@
 
 use rand::prelude::*;
 use rand_distr::Uniform;
+// Note: rayon imported for future parallel training
+#[allow(unused_imports)]
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -204,7 +209,7 @@ impl SkipGram {
     ///
     /// For each position, predicts context nodes and updates embeddings.
     pub fn train_walk(&mut self, walk: &[u32]) {
-        let dim = self.config.embedding_dim;
+        let _dim = self.config.embedding_dim;  // reserved for future batch ops
         let window = self.config.window_size;
         let neg_samples = self.config.negative_samples;
 

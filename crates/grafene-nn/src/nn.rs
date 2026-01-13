@@ -1,3 +1,8 @@
+//! Basic neural network building blocks.
+
+// Reserved fields for future features
+#![allow(dead_code)]
+
 use candle_core::{Tensor, Result};
 use candle_nn::{Linear, Module};
 

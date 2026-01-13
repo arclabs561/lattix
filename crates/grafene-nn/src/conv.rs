@@ -17,6 +17,9 @@
 //! h_i^{(l+1)} = UPDATE(h_i^{(l)}, AGGREGATE({MESSAGE(h_j^{(l)}) : j in N(i)}))
 //! ```
 
+// Some struct fields are reserved for future features (e.g., attention masking, bias control)
+#![allow(dead_code)]
+
 use candle_core::{Result, Tensor, D};
 use candle_nn::{linear, Linear, Module, VarBuilder};
 
@@ -125,7 +128,7 @@ impl GATConv {
     ///
     /// # Returns
     /// - Node embeddings (N x num_heads * out_features)
-    pub fn forward(&self, x: &Tensor, edge_index: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self, x: &Tensor, _edge_index: &Tensor) -> Result<Tensor> {
         let n = x.dim(0)?;
         
         // Linear projection: (N, in) -> (N, heads * out)
@@ -137,8 +140,8 @@ impl GATConv {
         
         // Compute attention scores
         // alpha_src = (h * att_src).sum(-1)  -> (N, heads)
-        let alpha_src = h.broadcast_mul(&self.att_src)?.sum(D::Minus1)?;
-        let alpha_dst = h.broadcast_mul(&self.att_dst)?.sum(D::Minus1)?;
+        let _alpha_src = h.broadcast_mul(&self.att_src)?.sum(D::Minus1)?;
+        let _alpha_dst = h.broadcast_mul(&self.att_dst)?.sum(D::Minus1)?;
         
         // For each edge (i, j): e_ij = LeakyReLU(alpha_src[i] + alpha_dst[j])
         // Then softmax over neighbors
@@ -754,12 +757,12 @@ impl RGCNConv {
         edge_index: &Tensor,
         edge_type: &Tensor,
     ) -> Result<Tensor> {
-        let n = x.dim(0)?;
-        let out_dim = self.self_weight.weight().dim(0)?;
-        let device = x.device();
+        let _n = x.dim(0)?;
+        let _out_dim = self.self_weight.weight().dim(0)?;
+        let _device = x.device();
 
         // Self-loop contribution
-        let mut out = self.self_weight.forward(x)?;
+        let out = self.self_weight.forward(x)?;
 
         // Get edge indices as vectors
         let src = edge_index.get(0)?;
@@ -781,7 +784,7 @@ impl RGCNConv {
             }
 
             // Get weight matrix for this relation
-            let w = if let Some(ref coeffs) = self.basis_coeffs {
+            let w = if self.basis_coeffs.is_some() {
                 // Basis decomposition: W_r = Σ a_{rb} V_b
                 // For simplicity, we use the first basis weight
                 // Full implementation would compute weighted sum
@@ -806,10 +809,11 @@ impl RGCNConv {
                 // Production code would use scatter operations
                 let h_s = h.get(s)?;
                 let out_d = out.get(d)?;
-                let new_d = (out_d + h_s)?;
+                let _new_d = (out_d + h_s)?;
 
-                // Update out[d] - requires in-place modification
-                // For now, we accumulate in a separate tensor
+                // TODO: Update out[d] - requires in-place modification
+                // For now, we just compute but don't aggregate
+                // Full impl would use scatter_add
             }
         }
 

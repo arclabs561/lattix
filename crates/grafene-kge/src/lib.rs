@@ -189,13 +189,16 @@ pub mod hyperbolic;
 pub use error::{Error, Result};
 pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
 pub use model::{BatchCapable, EpochMetrics, Fact, GpuCapable, KGEModel, Prediction};
-pub use models::{BoxE, HypE, HyperFact, TransE};
+pub use models::{BoxE, HSimplE, HypE, HyperFact, QualifiedFact, StarE, TransE};
 
 #[cfg(feature = "hyperbolic")]
 pub use models::MuRP;
 
 #[cfg(feature = "hyperbolic")]
 pub use models::RotH;
+
+#[cfg(feature = "hyperbolic")]
+pub use models::AttH;
 
 // NOTE: KGEOnnx disabled until ndarray version aligned with ort crate
 // #[cfg(feature = "onnx")]

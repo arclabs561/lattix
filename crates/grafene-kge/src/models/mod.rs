@@ -21,8 +21,12 @@
 //!
 //! | Model | Description | Feature |
 //! |-------|-------------|---------|
+//! | `HypE` | N-ary hyperedge convolutions | always |
+//! | `HSimplE` | Tucker/CP decomposition for hypergraphs | always |
+//! | `StarE` | Hyper-relational with qualifiers | always |
 //! | `MuRP` | Hyperbolic translations (Balazevic 2019) | `hyperbolic` |
 //! | `RotH` | Hyperbolic rotations (Chami 2020) | `hyperbolic` |
+//! | `AttH` | Attention hyperbolic (Chami 2020) | `hyperbolic` |
 //! | `TransEBurn` | TransE on Burn | `burn` |
 //!
 //! # Example
@@ -55,6 +59,12 @@ pub use transe::TransE;
 mod hype;
 pub use hype::{HypE, HyperFact};
 
+mod hsimple;
+pub use hsimple::HSimplE;
+
+mod stare;
+pub use stare::{QualifiedFact, StarE};
+
 // Hyperbolic models (Poincare ball)
 #[cfg(feature = "hyperbolic")]
 mod murp;
@@ -65,6 +75,11 @@ pub use murp::MuRP;
 mod roth;
 #[cfg(feature = "hyperbolic")]
 pub use roth::RotH;
+
+#[cfg(feature = "hyperbolic")]
+mod atth;
+#[cfg(feature = "hyperbolic")]
+pub use atth::AttH;
 
 // ONNX inference (pre-trained models)
 // NOTE: Disabled until ndarray version is aligned with ort crate requirements
