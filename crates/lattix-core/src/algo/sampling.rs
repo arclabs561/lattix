@@ -95,7 +95,9 @@ pub fn sample_neighbors_with_replacement(
                 (0..k)
                     .map(|_| {
                         // Safe: we checked is_empty above
-                        let n_idx = *all_neighbors.choose(&mut rng).expect("non-empty");
+                        let n_idx = *all_neighbors
+                            .choose(&mut rng)
+                            .unwrap_or_else(|| unreachable!("checked is_empty above"));
                         graph[n_idx].id.0.clone()
                     })
                     .collect()
@@ -326,7 +328,7 @@ impl<'a> HeteroNeighborSampler<'a> {
             // Get source nodes for this edge type (clone to avoid borrow conflict)
             let src_nodes: Vec<usize> = sampled_nodes
                 .get(&edge_type.src_type)
-                .map(|v| v.clone())
+                .cloned()
                 .unwrap_or_default();
 
             for src_local_idx in src_nodes {
