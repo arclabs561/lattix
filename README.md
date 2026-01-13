@@ -1,4 +1,4 @@
-# lattice
+# grafene
 
 Knowledge graph construction, analysis, and embedding inference in Rust.
 

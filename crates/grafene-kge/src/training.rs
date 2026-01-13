@@ -624,12 +624,13 @@ pub mod boxe {
 
     /// Convert grafene triples to subsume format.
     pub fn to_subsume_triples(triples: &[Triple]) -> Vec<SubsumeTriple> {
+        use crate::TripleKGE;
         triples
             .iter()
             .map(|t| SubsumeTriple {
-                head: t.head.clone(),
-                relation: t.relation.clone(),
-                tail: t.tail.clone(),
+                head: t.head().to_string(),
+                relation: t.rel().to_string(),
+                tail: t.tail().to_string(),
             })
             .collect()
     }
@@ -711,14 +712,16 @@ pub mod boxe {
     ///
     /// BoxE result with entity points and relation boxes.
     pub fn train_boxe(triples: &[Triple], config: BoxEConfig) -> Result<BoxEResult> {
+        use crate::TripleKGE;
+        
         // Extract vocabulary
         let mut entities = HashSet::new();
         let mut relations = HashSet::new();
 
         for t in triples {
-            entities.insert(t.head.clone());
-            entities.insert(t.tail.clone());
-            relations.insert(t.relation.clone());
+            entities.insert(t.head().to_string());
+            entities.insert(t.tail().to_string());
+            relations.insert(t.rel().to_string());
         }
 
         let dim = config.embedding_dim;
