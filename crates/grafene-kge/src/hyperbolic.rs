@@ -49,6 +49,7 @@
 //! - Balazevic et al. (2019). "Multi-relational Poincare Graph Embeddings"
 
 use crate::error::Result;
+use crate::training::{Triple, TripleKGE};
 use hyperball::PoincareBall;
 use ndarray::Array1;
 use std::collections::HashMap;
@@ -216,7 +217,7 @@ impl HyperE {
 ///
 /// Uses Riemannian SGD with burn-in period for stability.
 pub fn train_hypere(
-    triples: &[(String, String, String)],
+    triples: &[Triple],
     config: &HyperEConfig,
 ) -> Result<HyperE> {
     use rand::prelude::*;
@@ -225,19 +226,22 @@ pub fn train_hypere(
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let manifold = PoincareBall::new(config.curvature);
 
-    // Collect entities and relations
+    // Collect entities and relations using TripleKGE trait
     let mut entities: Vec<String> = Vec::new();
     let mut relations: Vec<String> = Vec::new();
 
-    for (h, r, t) in triples {
-        if !entities.contains(h) {
-            entities.push(h.clone());
+    for triple in triples {
+        let h = triple.head().to_string();
+        let r = triple.rel().to_string();
+        let t = triple.tail().to_string();
+        if !entities.contains(&h) {
+            entities.push(h);
         }
-        if !entities.contains(t) {
-            entities.push(t.clone());
+        if !entities.contains(&t) {
+            entities.push(t);
         }
-        if !relations.contains(r) {
-            relations.push(r.clone());
+        if !relations.contains(&r) {
+            relations.push(r);
         }
     }
 
@@ -273,8 +277,12 @@ pub fn train_hypere(
 
         let mut total_loss = 0.0;
 
-        for (head, rel, tail) in triples {
-            // Positive triple
+        for triple in triples {
+            // Positive triple - use TripleKGE trait accessors
+            let head = triple.head();
+            let rel = triple.rel();
+            let tail = triple.tail();
+
             let h = entity_emb.get(head).unwrap().clone();
             let r = relation_emb.get(rel).unwrap().clone();
             let t = entity_emb.get(tail).unwrap().clone();
@@ -389,10 +397,10 @@ mod tests {
     #[test]
     fn test_train_hypere_small() {
         let triples = vec![
-            ("animal".to_string(), "hypernym".to_string(), "entity".to_string()),
-            ("mammal".to_string(), "hypernym".to_string(), "animal".to_string()),
-            ("dog".to_string(), "hypernym".to_string(), "mammal".to_string()),
-            ("cat".to_string(), "hypernym".to_string(), "mammal".to_string()),
+            Triple::new("animal", "hypernym", "entity"),
+            Triple::new("mammal", "hypernym", "animal"),
+            Triple::new("dog", "hypernym", "mammal"),
+            Triple::new("cat", "hypernym", "mammal"),
         ];
 
         let config = HyperEConfig::default()
