@@ -80,6 +80,7 @@ impl KnowledgeGraph {
     }
 
     /// Rebuild indexes after deserialization.
+    #[cfg(feature = "binary")]
     fn rebuild_indexes(&mut self) {
         self.subject_index.clear();
         self.object_index.clear();
