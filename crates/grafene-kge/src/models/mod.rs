@@ -49,15 +49,21 @@ mod transe;
 pub use boxe::BoxE;
 pub use transe::TransE;
 
+// Hyperbolic models (Poincare ball)
+#[cfg(feature = "hyperbolic")]
+mod murp;
+#[cfg(feature = "hyperbolic")]
+pub use murp::MuRP;
+
+// ONNX inference (pre-trained models)
+// NOTE: Disabled until ndarray version is aligned with ort crate requirements
+// #[cfg(feature = "onnx")]
+// mod onnx_wrapper;
+// #[cfg(feature = "onnx")]
+// pub use onnx_wrapper::KGEOnnx;
+
 // GPU-accelerated models via Burn
 #[cfg(feature = "burn")]
 mod burn_backend;
 #[cfg(feature = "burn")]
 pub use burn_backend::TransEBurn;
-
-// Future models:
-//
-// #[cfg(feature = "hyperbolic")]
-// mod murp;
-// #[cfg(feature = "hyperbolic")]
-// pub use murp::MuRP;

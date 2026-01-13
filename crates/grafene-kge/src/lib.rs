@@ -190,6 +190,13 @@ pub use error::{Error, Result};
 pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
 pub use model::{BatchCapable, EpochMetrics, Fact, GpuCapable, KGEModel, Prediction};
 pub use models::{BoxE, TransE};
+
+#[cfg(feature = "hyperbolic")]
+pub use models::MuRP;
+
+// NOTE: KGEOnnx disabled until ndarray version aligned with ort crate
+// #[cfg(feature = "onnx")]
+// pub use models::KGEOnnx;
 pub use scoring::{LinkPredictionResult, ScoringFunction, TripleScore};
 
 #[cfg(feature = "onnx")]

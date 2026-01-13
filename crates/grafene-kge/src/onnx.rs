@@ -1,7 +1,7 @@
 use crate::{Error, KGEmbedding, LinkPredictionResult, Result};
-use ndarray::{Array1, Axis};
+use grafene_core::EntityId;
 use ort::session::{builder::GraphOptimizationLevel, Session};
-use ort::value::Value;
+use ort::value::Tensor;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -91,13 +91,10 @@ impl KGEmbedding for OnnxKGE {
         let r_id = self.get_relation_id(relation)?;
         let t_id = self.get_entity_id(tail)?;
 
-        let h_tensor = Array1::from_elem(1, h_id as i64).insert_axis(Axis(1));
-        let r_tensor = Array1::from_elem(1, r_id as i64).insert_axis(Axis(1));
-        let t_tensor = Array1::from_elem(1, t_id as i64).insert_axis(Axis(1));
-
-        let h_val = Value::from_array(h_tensor)?;
-        let r_val = Value::from_array(r_tensor)?;
-        let t_val = Value::from_array(t_tensor)?;
+        // Create tensors using ort 2.0 API: (shape, data)
+        let h_val = Tensor::from_array(([1usize, 1], vec![h_id as i64]))?;
+        let r_val = Tensor::from_array(([1usize, 1], vec![r_id as i64]))?;
+        let t_val = Tensor::from_array(([1usize, 1], vec![t_id as i64]))?;
 
         let mut session = self.session.lock().unwrap();
         let outputs = session.run(ort::inputs![
@@ -106,9 +103,9 @@ impl KGEmbedding for OnnxKGE {
             "tails" => t_val
         ])?;
 
-        let scores_tuple = outputs["scores"].try_extract_tensor::<f32>()?;
-        let scores_slice = scores_tuple.1;
-        Ok(scores_slice[0])
+        let scores = outputs["scores"].try_extract_tensor::<f32>()?;
+        let (_shape, data) = scores;
+        Ok(data[0])
     }
 
     fn predict_tail(
@@ -121,13 +118,14 @@ impl KGEmbedding for OnnxKGE {
         let r_id = self.get_relation_id(relation)?;
         let num_entities = self.num_entities();
 
-        let h_tensor = Array1::from_elem(num_entities, h_id as i64).insert_axis(Axis(1));
-        let r_tensor = Array1::from_elem(num_entities, r_id as i64).insert_axis(Axis(1));
-        let t_tensor = Array1::from_iter((0..num_entities).map(|x| x as i64)).insert_axis(Axis(1));
+        // Create batch tensors using ort 2.0 API
+        let h_data: Vec<i64> = vec![h_id as i64; num_entities];
+        let r_data: Vec<i64> = vec![r_id as i64; num_entities];
+        let t_data: Vec<i64> = (0..num_entities as i64).collect();
 
-        let h_val = Value::from_array(h_tensor)?;
-        let r_val = Value::from_array(r_tensor)?;
-        let t_val = Value::from_array(t_tensor)?;
+        let h_val = Tensor::from_array(([num_entities, 1], h_data))?;
+        let r_val = Tensor::from_array(([num_entities, 1], r_data))?;
+        let t_val = Tensor::from_array(([num_entities, 1], t_data))?;
 
         let mut session = self.session.lock().unwrap();
         let outputs = session.run(ort::inputs![
@@ -136,8 +134,8 @@ impl KGEmbedding for OnnxKGE {
             "tails" => t_val
         ])?;
 
-        let scores_tuple = outputs["scores"].try_extract_tensor::<f32>()?;
-        let scores_slice = scores_tuple.1;
+        let scores = outputs["scores"].try_extract_tensor::<f32>()?;
+        let (_shape, scores_slice) = scores;
 
         let mut results: Vec<(usize, f32)> = scores_slice
             .iter()
@@ -152,7 +150,7 @@ impl KGEmbedding for OnnxKGE {
             .take(k)
             .enumerate()
             .map(|(rank, (idx, score))| LinkPredictionResult {
-                entity: self.id_to_entity[idx].clone(),
+                entity: EntityId::new(&self.id_to_entity[idx]),
                 score,
                 rank: rank + 1,
             })
@@ -171,13 +169,14 @@ impl KGEmbedding for OnnxKGE {
         let t_id = self.get_entity_id(tail)?;
         let num_entities = self.num_entities();
 
-        let h_tensor = Array1::from_iter((0..num_entities).map(|x| x as i64)).insert_axis(Axis(1));
-        let r_tensor = Array1::from_elem(num_entities, r_id as i64).insert_axis(Axis(1));
-        let t_tensor = Array1::from_elem(num_entities, t_id as i64).insert_axis(Axis(1));
+        // Create batch tensors using ort 2.0 API
+        let h_data: Vec<i64> = (0..num_entities as i64).collect();
+        let r_data: Vec<i64> = vec![r_id as i64; num_entities];
+        let t_data: Vec<i64> = vec![t_id as i64; num_entities];
 
-        let h_val = Value::from_array(h_tensor)?;
-        let r_val = Value::from_array(r_tensor)?;
-        let t_val = Value::from_array(t_tensor)?;
+        let h_val = Tensor::from_array(([num_entities, 1], h_data))?;
+        let r_val = Tensor::from_array(([num_entities, 1], r_data))?;
+        let t_val = Tensor::from_array(([num_entities, 1], t_data))?;
 
         let mut session = self.session.lock().unwrap();
         let outputs = session.run(ort::inputs![
@@ -186,8 +185,8 @@ impl KGEmbedding for OnnxKGE {
             "tails" => t_val
         ])?;
 
-        let scores_tuple = outputs["scores"].try_extract_tensor::<f32>()?;
-        let scores_slice = scores_tuple.1;
+        let scores = outputs["scores"].try_extract_tensor::<f32>()?;
+        let (_shape, scores_slice) = scores;
 
         let mut results: Vec<(usize, f32)> = scores_slice
             .iter()
@@ -202,7 +201,7 @@ impl KGEmbedding for OnnxKGE {
             .take(k)
             .enumerate()
             .map(|(rank, (idx, score))| LinkPredictionResult {
-                entity: self.id_to_entity[idx].clone(),
+                entity: EntityId::new(&self.id_to_entity[idx]),
                 score,
                 rank: rank + 1,
             })
@@ -236,4 +235,5 @@ impl KGEmbedding for OnnxKGE {
     }
 }
 
+/// TransE ONNX wrapper (alias for OnnxKGE).
 pub type TransEOnnx = OnnxKGE;
