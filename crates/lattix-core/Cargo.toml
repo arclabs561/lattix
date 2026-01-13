@@ -29,10 +29,12 @@ proptest = { workspace = true }
 criterion = "0.5"
 
 [features]
-default = ["formats", "algo", "binary"]
+# Note: "binary" removed from default - bincode is unmaintained (RUSTSEC-2025-0141)
+# Use serde_json or postcard for serialization instead
+default = ["formats", "algo"]
 formats = ["dep:rio_api", "dep:rio_turtle", "dep:oxiri", "dep:csv"]
 algo = ["dep:rand", "dep:rand_xorshift", "dep:rand_distr", "dep:rayon"]
-binary = ["dep:bincode"]
+binary = ["dep:bincode"]  # Legacy, unmaintained - prefer serde_json
 sophia = ["dep:sophia_api"]
 
 [[bench]]
