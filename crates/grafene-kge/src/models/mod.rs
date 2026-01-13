@@ -15,6 +15,7 @@
 //! |-------|-------------|---------|
 //! | [`TransE`] | Relations as translations | ndarray |
 //! | [`BoxE`] | Relations as boxes | ndarray |
+//! | [`HypE`] | N-ary hyperedge embeddings (Fatemi 2019) | ndarray |
 //!
 //! # Feature-Gated Models
 //!
@@ -49,6 +50,10 @@ mod transe;
 
 pub use boxe::BoxE;
 pub use transe::TransE;
+
+// Hyperedge models (n-ary relations)
+mod hype;
+pub use hype::{HypE, HyperFact};
 
 // Hyperbolic models (Poincare ball)
 #[cfg(feature = "hyperbolic")]

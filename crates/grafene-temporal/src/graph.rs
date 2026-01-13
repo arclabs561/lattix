@@ -1,7 +1,6 @@
 //! Temporal graph storage.
 
 use crate::edge::{TemporalEdge, Timestamp};
-use crate::{Error, Result};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 

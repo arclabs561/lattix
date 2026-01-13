@@ -189,7 +189,7 @@ pub mod hyperbolic;
 pub use error::{Error, Result};
 pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
 pub use model::{BatchCapable, EpochMetrics, Fact, GpuCapable, KGEModel, Prediction};
-pub use models::{BoxE, TransE};
+pub use models::{BoxE, HypE, HyperFact, TransE};
 
 #[cfg(feature = "hyperbolic")]
 pub use models::MuRP;

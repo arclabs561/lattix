@@ -110,6 +110,7 @@ impl TemporalQuery {
 }
 
 /// Temporal aggregation functions.
+#[allow(dead_code)] // Public API for users of the crate
 pub mod aggregate {
     use super::*;
     use crate::edge::TemporalEdge;

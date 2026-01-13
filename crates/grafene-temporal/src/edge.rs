@@ -79,6 +79,7 @@ pub struct IntervalEdge {
     pub end: Timestamp,
 }
 
+#[allow(dead_code)] // Used in tests and for future APIs
 impl IntervalEdge {
     /// Create a new interval edge.
     pub fn new(src: u32, dst: u32, start: Timestamp, end: Timestamp) -> Self {
