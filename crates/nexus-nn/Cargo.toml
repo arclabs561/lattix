@@ -1,0 +1,41 @@
+[package]
+name = "nexus-nn"
+version = "0.1.0"
+edition = "2021"
+description = "Graph neural network layers: GCN, GAT, GraphSAGE, Node2Vec, hyperbolic GNN"
+license = "MIT OR Apache-2.0"
+keywords = ["gnn", "graph-neural-network", "machine-learning", "deep-learning"]
+categories = ["science", "mathematics"]
+
+[features]
+default = ["node2vec"]
+node2vec = []
+kge = []
+hyperbolic = ["locus"]
+onnx = ["ort"]
+
+[dependencies]
+# Structure Layer
+nexus-core = { path = "../nexus-core" }
+
+# Geometry Layer (hyperbolic operations)
+locus = { path = "../../../locus", optional = true }
+
+# Compute Backend
+candle-core = "0.8"
+candle-nn = "0.8"
+
+# ONNX Runtime (for loading PyKEEN models)
+ort = { version = "2.0.0-rc.10", optional = true }
+
+# Utils
+rand = "0.8"
+rand_distr = "0.4"
+thiserror = "1.0"
+rayon = "1.10"
+smallvec = "1.13"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+approx = "0.5"

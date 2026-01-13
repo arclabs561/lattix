@@ -1,0 +1,14 @@
+[package]
+name = "nexus-py"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "nexus"
+crate-type = ["cdylib"]
+doc = false
+
+[dependencies]
+nexus-core = { path = "../nexus-core", features = ["algo", "formats"] }
+pyo3 = { version = "0.20", features = ["extension-module"] }
