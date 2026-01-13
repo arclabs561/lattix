@@ -216,10 +216,7 @@ impl HyperE {
 /// Train HyperE model on triples.
 ///
 /// Uses Riemannian SGD with burn-in period for stability.
-pub fn train_hypere(
-    triples: &[Triple],
-    config: &HyperEConfig,
-) -> Result<HyperE> {
+pub fn train_hypere(triples: &[Triple], config: &HyperEConfig) -> Result<HyperE> {
     use rand::prelude::*;
     use rand::SeedableRng;
 
@@ -420,8 +417,10 @@ mod tests {
         let mammal_depth = model.entity_depth("mammal").unwrap_or(0.0);
         let dog_depth = model.entity_depth("dog").unwrap_or(0.0);
 
-        eprintln!("Depths: entity={:.3}, animal={:.3}, mammal={:.3}, dog={:.3}",
-            entity_depth, animal_depth, mammal_depth, dog_depth);
+        eprintln!(
+            "Depths: entity={:.3}, animal={:.3}, mammal={:.3}, dog={:.3}",
+            entity_depth, animal_depth, mammal_depth, dog_depth
+        );
     }
 
     #[test]

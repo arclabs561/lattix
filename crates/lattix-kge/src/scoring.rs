@@ -207,8 +207,15 @@ pub fn boxe_score(
 ) -> crate::Result<f32> {
     use subsume_core::boxe;
 
-    boxe::boxe_score(head_min, head_max, tail_min, tail_max, relation_bump, temperature)
-        .map_err(|e| crate::Error::BoxEmbedding(format!("{:?}", e)))
+    boxe::boxe_score(
+        head_min,
+        head_max,
+        tail_min,
+        tail_max,
+        relation_bump,
+        temperature,
+    )
+    .map_err(|e| crate::Error::BoxEmbedding(format!("{:?}", e)))
 }
 
 /// BoxE margin-based ranking loss.

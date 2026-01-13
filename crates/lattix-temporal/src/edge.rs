@@ -58,7 +58,8 @@ impl PartialOrd for TemporalEdge {
 
 impl Ord for TemporalEdge {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.time.cmp(&other.time)
+        self.time
+            .cmp(&other.time)
             .then_with(|| self.src.cmp(&other.src))
             .then_with(|| self.dst.cmp(&other.dst))
     }
@@ -83,7 +84,12 @@ pub struct IntervalEdge {
 impl IntervalEdge {
     /// Create a new interval edge.
     pub fn new(src: u32, dst: u32, start: Timestamp, end: Timestamp) -> Self {
-        Self { src, dst, start, end }
+        Self {
+            src,
+            dst,
+            start,
+            end,
+        }
     }
 
     /// Check if edge is active at a given time.
@@ -112,8 +118,8 @@ mod tests {
         let e2 = TemporalEdge::new(0, 1, 200);
         let e3 = TemporalEdge::new(0, 2, 100);
 
-        assert!(e1 < e2);  // Earlier time
-        assert!(e1 < e3);  // Same time, different dst
+        assert!(e1 < e2); // Earlier time
+        assert!(e1 < e3); // Same time, different dst
     }
 
     #[test]
@@ -132,7 +138,7 @@ mod tests {
 
         assert!(e.active_at(100));
         assert!(e.active_at(150));
-        assert!(!e.active_at(200));  // End is exclusive
+        assert!(!e.active_at(200)); // End is exclusive
         assert!(!e.active_at(50));
         assert_eq!(e.duration(), 100);
     }
@@ -143,7 +149,7 @@ mod tests {
         let e2 = IntervalEdge::new(0, 1, 150, 250);
         let e3 = IntervalEdge::new(0, 1, 200, 300);
 
-        assert!(e1.overlaps(&e2));  // [100,200) and [150,250) overlap
+        assert!(e1.overlaps(&e2)); // [100,200) and [150,250) overlap
         assert!(!e1.overlaps(&e3)); // [100,200) and [200,300) don't overlap
     }
 }

@@ -313,11 +313,7 @@ impl HeteroGraph {
     }
 
     /// Get neighbors of a node via a specific edge type.
-    pub fn neighbors(
-        &self,
-        edge_type: &EdgeType,
-        src_idx: TypedNodeIndex,
-    ) -> Vec<TypedNodeIndex> {
+    pub fn neighbors(&self, edge_type: &EdgeType, src_idx: TypedNodeIndex) -> Vec<TypedNodeIndex> {
         self.edge_stores
             .get(edge_type)
             .map(|store| {
@@ -405,7 +401,12 @@ impl HeteroGraph {
             edges_by_type: self
                 .edge_stores
                 .iter()
-                .map(|(t, s)| (format!("{}->{}:{}", t.src_type.0, t.dst_type.0, t.relation), s.num_edges()))
+                .map(|(t, s)| {
+                    (
+                        format!("{}->{}:{}", t.src_type.0, t.dst_type.0, t.relation),
+                        s.num_edges(),
+                    )
+                })
                 .collect(),
         }
     }
@@ -497,7 +498,9 @@ mod tests {
 
         // Find papers that cite papers alice wrote
         // metapath: alice -[writes]-> paper1 <-[rev_cites]- paper2
-        let alice_idx = hg.get_node_index(&NodeType::new("author"), "alice").unwrap();
+        let alice_idx = hg
+            .get_node_index(&NodeType::new("author"), "alice")
+            .unwrap();
         let metapath = vec![writes.clone(), cites.reverse()];
 
         let reachable = hg.metapath_neighbors(&NodeType::new("author"), alice_idx, &metapath);

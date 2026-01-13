@@ -555,7 +555,10 @@ mod tests {
         if let (Some(entity_depth), Some(dog_depth)) =
             (model.entity_depth("entity"), model.entity_depth("dog"))
         {
-            eprintln!("entity depth: {:.4}, dog depth: {:.4}", entity_depth, dog_depth);
+            eprintln!(
+                "entity depth: {:.4}, dog depth: {:.4}",
+                entity_depth, dog_depth
+            );
         }
     }
 }

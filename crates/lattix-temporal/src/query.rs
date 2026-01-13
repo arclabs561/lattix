@@ -149,8 +149,8 @@ pub mod aggregate {
 
         for edge in edges {
             if window.contains(edge.time) {
-                degrees.entry(edge.src).or_default().0 += 1;  // out-degree
-                degrees.entry(edge.dst).or_default().1 += 1;  // in-degree
+                degrees.entry(edge.src).or_default().0 += 1; // out-degree
+                degrees.entry(edge.dst).or_default().1 += 1; // in-degree
             }
         }
 

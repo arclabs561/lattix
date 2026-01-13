@@ -75,7 +75,11 @@ pub struct QualifiedFact {
 
 impl QualifiedFact {
     /// Create a new qualified fact.
-    pub fn new(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
+    pub fn new(
+        head: impl Into<String>,
+        relation: impl Into<String>,
+        tail: impl Into<String>,
+    ) -> Self {
         Self {
             head: head.into(),
             relation: relation.into(),
@@ -252,8 +256,10 @@ impl StarE {
         }
 
         for (i, relation) in relations.iter().enumerate() {
-            self.relation_embeddings
-                .insert(relation.clone(), make_embedding(config.seed + 1, i, self.dim));
+            self.relation_embeddings.insert(
+                relation.clone(),
+                make_embedding(config.seed + 1, i, self.dim),
+            );
         }
 
         for (i, qr) in qual_rels.iter().enumerate() {
@@ -473,8 +479,7 @@ mod tests {
             QualifiedFact::new("Einstein", "educated_at", "ETH")
                 .with_qualifier("start_time", "1896")
                 .with_qualifier("end_time", "1900"),
-            QualifiedFact::new("Curie", "educated_at", "Sorbonne")
-                .with_qualifier("degree", "PhD"),
+            QualifiedFact::new("Curie", "educated_at", "Sorbonne").with_qualifier("degree", "PhD"),
         ];
 
         let config = TrainingConfig::default()
@@ -497,9 +502,7 @@ mod tests {
     fn test_stare_scoring() {
         let mut model = StarE::new(16);
 
-        let facts = vec![
-            QualifiedFact::new("A", "r", "B").with_qualifier("qr", "qv"),
-        ];
+        let facts = vec![QualifiedFact::new("A", "r", "B").with_qualifier("qr", "qv")];
 
         let config = TrainingConfig::default()
             .with_embedding_dim(16)

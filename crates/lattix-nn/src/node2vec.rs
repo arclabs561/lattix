@@ -210,7 +210,7 @@ impl SkipGram {
     ///
     /// For each position, predicts context nodes and updates embeddings.
     pub fn train_walk(&mut self, walk: &[u32]) {
-        let _dim = self.config.embedding_dim;  // reserved for future batch ops
+        let _dim = self.config.embedding_dim; // reserved for future batch ops
         let window = self.config.window_size;
         let neg_samples = self.config.negative_samples;
 
@@ -409,12 +409,15 @@ mod tests {
 
     #[test]
     fn test_skipgram_train_walk() {
-        let mut model = SkipGram::new(10, SkipGramConfig {
-            embedding_dim: 32,
-            window_size: 2,
-            negative_samples: 2,
-            ..Default::default()
-        });
+        let mut model = SkipGram::new(
+            10,
+            SkipGramConfig {
+                embedding_dim: 32,
+                window_size: 2,
+                negative_samples: 2,
+                ..Default::default()
+            },
+        );
 
         let walk = vec![0, 1, 2, 3, 4, 5];
         model.train_walk(&walk);
@@ -426,10 +429,13 @@ mod tests {
 
     #[test]
     fn test_embeddings_shape() {
-        let model = SkipGram::new(50, SkipGramConfig {
-            embedding_dim: 64,
-            ..Default::default()
-        });
+        let model = SkipGram::new(
+            50,
+            SkipGramConfig {
+                embedding_dim: 64,
+                ..Default::default()
+            },
+        );
 
         let embs = model.embeddings_2d();
         assert_eq!(embs.len(), 50);

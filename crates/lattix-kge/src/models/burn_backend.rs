@@ -226,7 +226,11 @@ impl<B: Send + Sync + 'static> KGEModel for TransEBurn<B> {
             for (batch_idx, batch) in triples.chunks(config.batch_size).enumerate() {
                 for triple in batch {
                     let h = self.entity_embeddings.get(&triple.head).unwrap().clone();
-                    let r = self.relation_embeddings.get(&triple.relation).unwrap().clone();
+                    let r = self
+                        .relation_embeddings
+                        .get(&triple.relation)
+                        .unwrap()
+                        .clone();
                     let t = self.entity_embeddings.get(&triple.tail).unwrap().clone();
 
                     let pos_score = self.transe_score(&h, &r, &t);
@@ -256,8 +260,7 @@ impl<B: Send + Sync + 'static> KGEModel for TransEBurn<B> {
                             let mut r_grad = vec![0.0f32; self.dim];
 
                             for i in 0..self.dim {
-                                let grad = (h[i] + r[i] - t[i])
-                                    / (pos_score.abs() + 1e-8)
+                                let grad = (h[i] + r[i] - t[i]) / (pos_score.abs() + 1e-8)
                                     * config.margin.signum();
 
                                 h_grad[i] = lr * grad;
@@ -284,10 +287,7 @@ impl<B: Send + Sync + 'static> KGEModel for TransEBurn<B> {
                                 t_mut.iter_mut().for_each(|x| *x /= t_norm);
                             }
 
-                            let r_mut = self
-                                .relation_embeddings
-                                .get_mut(&triple.relation)
-                                .unwrap();
+                            let r_mut = self.relation_embeddings.get_mut(&triple.relation).unwrap();
                             for i in 0..self.dim {
                                 r_mut[i] -= r_grad[i];
                             }

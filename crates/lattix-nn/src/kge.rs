@@ -32,7 +32,7 @@
 //! | ComplEx | Re(<h, r, conj(t)>) | Complex, handles symmetry |
 //! | DistMult | <h, r, t> | Symmetric relations only |
 
-use candle_core::{Device, Result, Tensor, DType};
+use candle_core::{DType, Device, Result, Tensor};
 
 /// Trait for KGE scoring functions.
 pub trait KGEScorer {
@@ -43,7 +43,8 @@ pub trait KGEScorer {
 
     /// Score multiple triples.
     fn score_batch(&self, triples: &[(usize, usize, usize)]) -> Result<Vec<f32>> {
-        triples.iter()
+        triples
+            .iter()
             .map(|(h, r, t)| self.score(*h, *r, *t))
             .collect()
     }
@@ -144,8 +145,8 @@ impl KGEScorer for TransE {
 
         // Score all entities as tails
         // diff = hr - entities  (broadcast)
-        let hr = hr.unsqueeze(0)?;  // (1, dim)
-        let diff = hr.broadcast_sub(&self.entities)?;  // (num_entities, dim)
+        let hr = hr.unsqueeze(0)?; // (1, dim)
+        let diff = hr.broadcast_sub(&self.entities)?; // (num_entities, dim)
 
         let scores = if self.norm == 1 {
             diff.abs()?.sum(1)?
@@ -160,7 +161,8 @@ impl KGEScorer for TransE {
         let indices = indices.to_vec1::<u32>()?;
         let scores = neg_scores.to_vec1::<f32>()?;
 
-        Ok(indices.iter()
+        Ok(indices
+            .iter()
             .take(k)
             .map(|&i| (i as usize, scores[i as usize]))
             .collect())
@@ -169,7 +171,7 @@ impl KGEScorer for TransE {
     fn predict_head(&self, relation: usize, tail: usize, k: usize) -> Result<Vec<(usize, f32)>> {
         let r = self.relations.get(relation)?;
         let t = self.entities.get(tail)?;
-        let target = (t - r)?;  // h should be approximately t - r
+        let target = (t - r)?; // h should be approximately t - r
 
         let target = target.unsqueeze(0)?;
         let diff = target.broadcast_sub(&self.entities)?;
@@ -186,7 +188,8 @@ impl KGEScorer for TransE {
         let indices = indices.to_vec1::<u32>()?;
         let scores = neg_scores.to_vec1::<f32>()?;
 
-        Ok(indices.iter()
+        Ok(indices
+            .iter()
             .take(k)
             .map(|&i| (i as usize, scores[i as usize]))
             .collect())
@@ -220,7 +223,11 @@ impl DistMult {
     /// Create DistMult scorer.
     pub fn new(entities: Tensor, relations: Tensor) -> Result<Self> {
         let device = entities.device().clone();
-        Ok(Self { entities, relations, device })
+        Ok(Self {
+            entities,
+            relations,
+            device,
+        })
     }
 
     /// Create from flat vectors.
@@ -263,7 +270,8 @@ impl KGEScorer for DistMult {
         let indices = indices.to_vec1::<u32>()?;
         let scores = scores.to_vec1::<f32>()?;
 
-        Ok(indices.iter()
+        Ok(indices
+            .iter()
             .take(k)
             .map(|&i| (i as usize, scores[i as usize]))
             .collect())
@@ -281,7 +289,8 @@ impl KGEScorer for DistMult {
         let indices = indices.to_vec1::<u32>()?;
         let scores = scores.to_vec1::<f32>()?;
 
-        Ok(indices.iter()
+        Ok(indices
+            .iter()
             .take(k)
             .map(|&i| (i as usize, scores[i as usize]))
             .collect())

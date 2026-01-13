@@ -227,7 +227,9 @@ impl<'a> NeighborSampler<'a> {
             let mut next_frontier = HashSet::new();
 
             for node_id in &frontier {
-                let src_idx = *node_to_idx.get(node_id).expect("frontier node should exist");
+                let src_idx = *node_to_idx
+                    .get(node_id)
+                    .expect("frontier node should exist");
                 let entity_id = crate::EntityId::from(node_id.as_str());
 
                 if let Some(node_idx) = self.kg.get_node_index(&entity_id) {
@@ -294,10 +296,7 @@ impl<'a> HeteroNeighborSampler<'a> {
     /// # Arguments
     /// * `kg` - The heterogeneous graph
     /// * `fanout` - Map from edge type to layer-wise fanout
-    pub fn new(
-        kg: &'a crate::HeteroGraph,
-        fanout: HashMap<crate::EdgeType, Vec<usize>>,
-    ) -> Self {
+    pub fn new(kg: &'a crate::HeteroGraph, fanout: HashMap<crate::EdgeType, Vec<usize>>) -> Self {
         Self { kg, fanout }
     }
 

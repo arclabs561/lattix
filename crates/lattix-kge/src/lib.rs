@@ -190,7 +190,7 @@ mod onnx;
 pub mod hyperbolic;
 
 pub use error::{Error, Result};
-pub use evaluation::{Evaluator, EvalTriple, RankMetrics};
+pub use evaluation::{EvalTriple, Evaluator, RankMetrics};
 pub use model::{BatchCapable, EpochMetrics, Fact, GpuCapable, KGEModel, Prediction};
 pub use models::{BoxE, HSimplE, HypE, HyperFact, QualifiedFact, StarE, TransE};
 
@@ -212,7 +212,7 @@ pub use scoring::{LinkPredictionResult, ScoringFunction, TripleScore};
 pub use onnx::{OnnxKGE, TransEOnnx};
 
 #[cfg(feature = "hyperbolic")]
-pub use hyperbolic::{HyperE, HyperEConfig, train_hypere};
+pub use hyperbolic::{train_hypere, HyperE, HyperEConfig};
 
 /// Trait for KG embedding models.
 pub trait KGEmbedding {

@@ -244,8 +244,10 @@ impl KGETrainer {
     pub fn train_transe(&self, triples: &[Triple]) -> Result<TrainingResult> {
         let (entities, relations) = self.extract_vocab(triples);
 
-        let mut entity_emb = self.init_embeddings(&entities, self.config.embedding_dim, self.config.seed);
-        let mut relation_emb = self.init_embeddings(&relations, self.config.embedding_dim, self.config.seed + 1);
+        let mut entity_emb =
+            self.init_embeddings(&entities, self.config.embedding_dim, self.config.seed);
+        let mut relation_emb =
+            self.init_embeddings(&relations, self.config.embedding_dim, self.config.seed + 1);
 
         let entities_vec: Vec<&String> = entities.iter().collect();
         let mut loss_history = Vec::with_capacity(self.config.epochs);
@@ -508,7 +510,10 @@ pub mod adam {
             // Early stopping
             if let Some(patience) = config.early_stopping {
                 if epoch > best_epoch + patience {
-                    eprintln!("Early stopping at epoch {} (best was {})", epoch, best_epoch);
+                    eprintln!(
+                        "Early stopping at epoch {} (best was {})",
+                        epoch, best_epoch
+                    );
                     break;
                 }
             }
@@ -578,7 +583,7 @@ pub mod adam {
         grads: &mut HashMap<String, Array1<f32>>,
         key: &str,
         grad: &Array1<f32>,
-        _dim: usize,  // Unused but kept for API compatibility
+        _dim: usize, // Unused but kept for API compatibility
     ) {
         grads
             .entry(key.to_string())
@@ -619,8 +624,8 @@ pub mod boxe {
     //! aligns with the tail within the relation's box constraints.
 
     use super::*;
-    use subsume_core::trainer::{TrainingConfig as SubsumeConfig, NegativeSamplingStrategy};
     use subsume_core::dataset::Triple as SubsumeTriple;
+    use subsume_core::trainer::{NegativeSamplingStrategy, TrainingConfig as SubsumeConfig};
 
     /// Convert lattix triples to subsume format.
     pub fn to_subsume_triples(triples: &[Triple]) -> Vec<SubsumeTriple> {
@@ -713,7 +718,7 @@ pub mod boxe {
     /// BoxE result with entity points and relation boxes.
     pub fn train_boxe(triples: &[Triple], config: BoxEConfig) -> Result<BoxEResult> {
         use super::TripleKGE;
-        
+
         // Extract vocabulary
         let mut entities = HashSet::new();
         let mut relations = HashSet::new();

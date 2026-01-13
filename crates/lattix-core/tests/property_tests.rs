@@ -318,7 +318,7 @@ mod serialization_props {
 
 mod stress_props {
     use super::*;
-    
+
     fn arb_entity_id() -> impl Strategy<Value = String> {
         "[a-zA-Z][a-zA-Z0-9]{0,5}".prop_map(|s| s)
     }
@@ -357,7 +357,7 @@ mod stress_props {
                 kg.add_triple(Triple::new(subject.as_str(), predicate.as_str(), object.as_str()));
                 expected_entities.insert(subject.clone());
                 expected_entities.insert(object.clone());
-                
+
                 expected_relations
                     .entry(subject.clone())
                     .or_default()
@@ -366,14 +366,14 @@ mod stress_props {
 
             // Check entity count
             prop_assert_eq!(kg.entity_count(), expected_entities.len());
-            
+
             // Check that every expected relation exists
             for (subject, objects) in &expected_relations {
                 let actual_objects: HashSet<_> = kg.relations_from(subject.as_str())
                     .iter()
                     .map(|t| t.object.as_str().to_string())
                     .collect();
-                
+
                 for expected_obj in objects {
                     prop_assert!(
                         actual_objects.contains(expected_obj),
@@ -397,11 +397,11 @@ mod stress_props {
 
             // Only one entity should exist
             prop_assert_eq!(kg.entity_count(), 1);
-            
+
             // The entity should have both outgoing and incoming relations
             let outgoing = kg.relations_from(entity.as_str());
             let incoming = kg.relations_to(entity.as_str());
-            
+
             prop_assert!(!outgoing.is_empty(), "Self-loop should appear in relations_from");
             prop_assert!(!incoming.is_empty(), "Self-loop should appear in relations_to");
         }

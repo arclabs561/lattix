@@ -87,7 +87,14 @@ impl BoxE {
     }
 
     /// Compute distance from point to tail, plus box violation.
-    fn boxe_score(&self, h: &[f32], bump: &[f32], center: &[f32], offset: &[f32], t: &[f32]) -> f32 {
+    fn boxe_score(
+        &self,
+        h: &[f32],
+        bump: &[f32],
+        center: &[f32],
+        offset: &[f32],
+        t: &[f32],
+    ) -> f32 {
         let mut dist_sq = 0.0;
         let mut violation = 0.0;
 
@@ -261,7 +268,8 @@ impl KGEModel for BoxE {
                 for triple in batch {
                     let h = self.entity_embeddings.get(&triple.head).unwrap().clone();
                     let t = self.entity_embeddings.get(&triple.tail).unwrap().clone();
-                    let (center, offset) = self.relation_boxes.get(&triple.relation).unwrap().clone();
+                    let (center, offset) =
+                        self.relation_boxes.get(&triple.relation).unwrap().clone();
                     let bump = self.relation_bumps.get(&triple.relation).unwrap().clone();
 
                     let pos_score = self.boxe_score(&h, &bump, &center, &offset, &t);

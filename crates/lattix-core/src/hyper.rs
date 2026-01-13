@@ -351,7 +351,11 @@ impl HyperGraph {
             result.push(ht.core.clone());
             let statement_id = format!("_:stmt_{}", i);
             for (key, value) in &ht.qualifiers {
-                result.push(Triple::new(statement_id.clone(), key.clone(), value.clone()));
+                result.push(Triple::new(
+                    statement_id.clone(),
+                    key.clone(),
+                    value.clone(),
+                ));
             }
         }
 

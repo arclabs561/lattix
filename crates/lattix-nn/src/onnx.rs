@@ -41,7 +41,7 @@
 //! // Load from exported PyKEEN model
 //! let model = load_pykeen_model(
 //!     "entity_embeddings.npy",
-//!     "relation_embeddings.npy", 
+//!     "relation_embeddings.npy",
 //!     "entity_to_id.json",
 //!     "relation_to_id.json",
 //!     KGEModelType::TransE,
@@ -144,7 +144,10 @@ impl KGEModel {
             .copied()
             .ok_or_else(|| LoadError::RelationNotFound(relation.to_string()))?;
 
-        let predictions = self.scorer.predict_tail(h, r, k).map_err(LoadError::Candle)?;
+        let predictions = self
+            .scorer
+            .predict_tail(h, r, k)
+            .map_err(LoadError::Candle)?;
 
         Ok(predictions
             .into_iter()
@@ -170,7 +173,10 @@ impl KGEModel {
             .copied()
             .ok_or_else(|| LoadError::EntityNotFound(tail.to_string()))?;
 
-        let predictions = self.scorer.predict_head(r, t, k).map_err(LoadError::Candle)?;
+        let predictions = self
+            .scorer
+            .predict_head(r, t, k)
+            .map_err(LoadError::Candle)?;
 
         Ok(predictions
             .into_iter()
@@ -315,7 +321,9 @@ pub fn load_pykeen_model(
 /// Load embeddings from a simple binary format.
 ///
 /// Format: [num_rows: u64][num_cols: u64][data: f32 * num_rows * num_cols]
-pub fn load_embeddings_binary(path: impl AsRef<Path>) -> Result<(Vec<f32>, usize, usize), LoadError> {
+pub fn load_embeddings_binary(
+    path: impl AsRef<Path>,
+) -> Result<(Vec<f32>, usize, usize), LoadError> {
     let mut file = File::open(path)?;
     let mut buf = [0u8; 8];
 
@@ -326,9 +334,8 @@ pub fn load_embeddings_binary(path: impl AsRef<Path>) -> Result<(Vec<f32>, usize
     let num_cols = u64::from_le_bytes(buf) as usize;
 
     let mut data = vec![0f32; num_rows * num_cols];
-    let data_bytes = unsafe {
-        std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, data.len() * 4)
-    };
+    let data_bytes =
+        unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, data.len() * 4) };
     file.read_exact(data_bytes)?;
 
     Ok((data, num_rows, num_cols))
@@ -413,7 +420,12 @@ fn load_npy_f32(path: impl AsRef<Path>) -> Result<Vec<f32>, LoadError> {
             file.read_exact(&mut len_bytes[2..4])?;
             u32::from_le_bytes(len_bytes) as usize
         }
-        _ => return Err(LoadError::Npy(format!("Unsupported NPY version: {:?}", version))),
+        _ => {
+            return Err(LoadError::Npy(format!(
+                "Unsupported NPY version: {:?}",
+                version
+            )))
+        }
     };
 
     // Skip header (we assume f32 and trust the array is well-formed)

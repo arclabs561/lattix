@@ -2,10 +2,7 @@
 //!
 //! Tests the full pipeline: training -> evaluation -> link prediction.
 
-use lattix_kge::{
-    BoxE, Evaluator, EvalTriple, Fact, KGEModel, TransE,
-    training::TrainingConfig,
-};
+use lattix_kge::{training::TrainingConfig, BoxE, EvalTriple, Evaluator, Fact, KGEModel, TransE};
 use std::collections::HashSet;
 
 /// Generate a synthetic hierarchical knowledge graph.
@@ -148,7 +145,9 @@ fn test_evaluation_with_filtering() {
     let mut scores: Vec<(String, f32)> = entities
         .iter()
         .map(|e| {
-            let score = model.score("alice", "friendOf", e).unwrap_or(f32::NEG_INFINITY);
+            let score = model
+                .score("alice", "friendOf", e)
+                .unwrap_or(f32::NEG_INFINITY);
             (e.clone(), score)
         })
         .collect();
@@ -158,10 +157,7 @@ fn test_evaluation_with_filtering() {
 
     // Bob should be in top predictions
     let bob_rank = scores.iter().position(|(e, _)| e == "bob").map(|r| r + 1);
-    assert!(
-        bob_rank.is_some(),
-        "Bob should be in predictions"
-    );
+    assert!(bob_rank.is_some(), "Bob should be in predictions");
 
     // With a well-trained model, bob should be in top 5
     // (relaxed assertion due to small training data)
@@ -244,7 +240,7 @@ fn test_large_graph_training() {
 #[cfg(feature = "hyperbolic")]
 mod hyperbolic_tests {
     use super::*;
-    use lattix_kge::{MuRP, RotH, AttH};
+    use lattix_kge::{AttH, MuRP, RotH};
 
     #[test]
     fn test_murp_hierarchy() {

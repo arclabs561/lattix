@@ -36,8 +36,8 @@
 //!
 //! Chami et al., "Hyperbolic Graph Convolutional Neural Networks", NeurIPS 2019.
 
-use candle_core::{Result, Tensor, DType, Device};
-use candle_nn::{Linear, Module, VarBuilder, linear};
+use candle_core::{DType, Device, Result, Tensor};
+use candle_nn::{linear, Linear, Module, VarBuilder};
 use hyperball::PoincareBall;
 
 /// Hyperbolic GCN layer.
@@ -101,13 +101,13 @@ impl HGCNConv {
         // Normalize to stay inside ball: project if ||h|| >= 1
         let h_norm = h_agg.sqr()?.sum_keepdim(1)?.sqrt()?;
         let max_norm = 1.0 - 1e-5;
-        
+
         // Clamp: if norm > max_norm, scale down
         let h_norm_safe = (h_norm.clone() + 1e-10)?;
         let scale = (h_norm_safe.recip()? * max_norm)?;
         let ones = Tensor::ones_like(&scale)?;
         let scale = scale.minimum(&ones)?;
-        
+
         h_agg.broadcast_mul(&scale)
     }
 
@@ -129,7 +129,10 @@ pub struct HyperbolicAttention {
 impl HyperbolicAttention {
     /// Create hyperbolic attention layer.
     pub fn new(curvature: f64, temperature: f64) -> Self {
-        Self { curvature, temperature }
+        Self {
+            curvature,
+            temperature,
+        }
     }
 
     /// Compute attention weights based on hyperbolic distance.
@@ -138,33 +141,33 @@ impl HyperbolicAttention {
     pub fn forward(&self, query: &Tensor, key: &Tensor) -> Result<Tensor> {
         // Compute pairwise hyperbolic distances
         // d(x, y) = acosh(1 + 2||x-y||^2 / ((1-||x||^2)(1-||y||^2)))
-        
+
         let n = query.dim(0)?;
         let m = key.dim(0)?;
-        
+
         // For efficiency, compute using the formula:
         // ||x-y||^2 = ||x||^2 + ||y||^2 - 2*x.y
-        let q_norm_sq = query.sqr()?.sum_keepdim(1)?;  // (n, 1)
-        let k_norm_sq = key.sqr()?.sum_keepdim(1)?;     // (m, 1)
-        let qk = query.matmul(&key.t()?)?;              // (n, m)
-        
+        let q_norm_sq = query.sqr()?.sum_keepdim(1)?; // (n, 1)
+        let k_norm_sq = key.sqr()?.sum_keepdim(1)?; // (m, 1)
+        let qk = query.matmul(&key.t()?)?; // (n, m)
+
         // ||x-y||^2 for all pairs
         let diff_sq = (q_norm_sq.broadcast_add(&k_norm_sq.t()?)? - (2.0 * qk)?)?;
-        
+
         // (1 - ||x||^2) and (1 - ||y||^2)
-        let alpha = (1.0 - q_norm_sq)?;  // (n, 1)
-        let beta = (1.0 - k_norm_sq)?;   // (m, 1)
-        let denom = alpha.broadcast_mul(&beta.t()?)?;  // (n, m)
-        
+        let alpha = (1.0 - q_norm_sq)?; // (n, 1)
+        let beta = (1.0 - k_norm_sq)?; // (m, 1)
+        let denom = alpha.broadcast_mul(&beta.t()?)?; // (n, m)
+
         // acosh argument: 1 + 2 * diff_sq / denom
         let denom_safe = (denom + 1e-10)?;
         let scaled_diff = (diff_sq * (2.0 * self.curvature))?;
         let ratio = scaled_diff.broadcast_div(&denom_safe)?;
         let arg = (ratio + 1.0)?;
-        
+
         // acosh(x) = log(x + sqrt(x^2 - 1))
         let dist = (arg.clone() + (arg.sqr()? - 1.0)?.sqrt()?)?.log()?;
-        
+
         // Attention weights: softmax(-dist / temperature)
         let logits = (dist * (-1.0 / self.temperature))?;
         candle_nn::ops::softmax(&logits, 1)
@@ -174,7 +177,7 @@ impl HyperbolicAttention {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{Device, DType};
+    use candle_core::{DType, Device};
     use candle_nn::VarMap;
 
     #[test]

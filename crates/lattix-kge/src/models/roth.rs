@@ -348,7 +348,11 @@ impl KGEModel for RotH {
                 for triple in batch {
                     let h = self.entity_embeddings.get(&triple.head).unwrap().clone();
                     let t = self.entity_embeddings.get(&triple.tail).unwrap().clone();
-                    let rotation = self.relation_rotations.get(&triple.relation).unwrap().clone();
+                    let rotation = self
+                        .relation_rotations
+                        .get(&triple.relation)
+                        .unwrap()
+                        .clone();
                     let b_h = *self.entity_biases.get(&triple.head).unwrap();
                     let b_t = *self.entity_biases.get(&triple.tail).unwrap();
 
@@ -390,7 +394,8 @@ impl KGEModel for RotH {
 
                             // Update rotation angles (gradient through rotation is complex,
                             // simplified here)
-                            let rot_mut = self.relation_rotations.get_mut(&triple.relation).unwrap();
+                            let rot_mut =
+                                self.relation_rotations.get_mut(&triple.relation).unwrap();
                             for (pair_idx, angle) in rot_mut.iter_mut().enumerate() {
                                 let i = pair_idx * 2;
                                 let j = i + 1;

@@ -1,12 +1,12 @@
 ---
-title: "Grafene Rules"
-id: grafene-rules
-description: "Rules for the Grafene graph learning stack (Structure, Learning, Temporal)"
+title: "Lattix Rules"
+id: lattix-rules
+description: "Rules for the Lattix graph learning stack (Structure, Learning, Temporal)"
 priority: 100
 alwaysApply: true
 ---
 
-# Grafene Rules
+# Lattix Rules
 
 ## General Principles
 
@@ -17,13 +17,13 @@ alwaysApply: true
 
 ## Architecture
 
-Grafene is a monorepo containing:
-- **grafene-core**: Graph structure, IO, algorithms (lightweight, no heavy ML).
-- **grafene-nn**: GNN layers, KGE scoring (depends on Candle/Burn).
-- **grafene-temporal**: Temporal graph primitives.
-- **grafene-kge**: Knowledge Graph Embedding inference (ONNX).
+Lattix is a monorepo containing:
+- **lattix-core**: Graph structure, IO, algorithms (lightweight, no heavy ML).
+- **lattix-nn**: GNN layers, KGE scoring (depends on Candle/Burn).
+- **lattix-temporal**: Temporal graph primitives.
+- **lattix-kge**: Knowledge Graph Embedding inference (ONNX).
 
-**Rule**: Keep `grafene-core` lightweight. Do not add heavy ML dependencies to it.
+**Rule**: Keep `lattix-core` lightweight. Do not add heavy ML dependencies to it.
 
 ## Rust Standards
 

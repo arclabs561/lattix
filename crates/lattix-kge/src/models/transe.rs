@@ -233,7 +233,11 @@ impl KGEModel for TransE {
             for (batch_idx, batch) in triples.chunks(config.batch_size).enumerate() {
                 for triple in batch {
                     let h = self.entity_embeddings.get(&triple.head).unwrap().clone();
-                    let r = self.relation_embeddings.get(&triple.relation).unwrap().clone();
+                    let r = self
+                        .relation_embeddings
+                        .get(&triple.relation)
+                        .unwrap()
+                        .clone();
                     let t = self.entity_embeddings.get(&triple.tail).unwrap().clone();
 
                     let pos_dist = self.distance(&h, &r, &t);

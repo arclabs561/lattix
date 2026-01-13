@@ -368,14 +368,29 @@ impl KGEModel for AttH {
                     let h = self.entity_embeddings.get(&triple.head).unwrap().clone();
                     let t = self.entity_embeddings.get(&triple.tail).unwrap().clone();
                     let curvature = *self.relation_curvatures.get(&triple.relation).unwrap();
-                    let rotation = self.relation_rotations.get(&triple.relation).unwrap().clone();
-                    let reflection = self.relation_reflections.get(&triple.relation).unwrap().clone();
+                    let rotation = self
+                        .relation_rotations
+                        .get(&triple.relation)
+                        .unwrap()
+                        .clone();
+                    let reflection = self
+                        .relation_reflections
+                        .get(&triple.relation)
+                        .unwrap()
+                        .clone();
                     let attention = *self.relation_attention.get(&triple.relation).unwrap();
                     let b_h = *self.entity_biases.get(&triple.head).unwrap();
                     let b_t = *self.entity_biases.get(&triple.tail).unwrap();
 
                     let pos_score = self.atth_score(
-                        &h, &t, curvature, &rotation, &reflection, attention, b_h, b_t,
+                        &h,
+                        &t,
+                        curvature,
+                        &rotation,
+                        &reflection,
+                        attention,
+                        b_h,
+                        b_t,
                     );
 
                     // Negative sampling
@@ -390,7 +405,14 @@ impl KGEModel for AttH {
                         let t_neg = self.entity_embeddings.get(neg_tail).unwrap();
                         let b_t_neg = *self.entity_biases.get(neg_tail).unwrap();
                         let neg_score = self.atth_score(
-                            &h, t_neg, curvature, &rotation, &reflection, attention, b_h, b_t_neg,
+                            &h,
+                            t_neg,
+                            curvature,
+                            &rotation,
+                            &reflection,
+                            attention,
+                            b_h,
+                            b_t_neg,
                         );
 
                         let loss = (config.margin as f64 - pos_score + neg_score).max(0.0);
@@ -413,7 +435,8 @@ impl KGEModel for AttH {
                             *t_mut = manifold.project(&t_mut.view());
 
                             // Update rotation
-                            let rot_mut = self.relation_rotations.get_mut(&triple.relation).unwrap();
+                            let rot_mut =
+                                self.relation_rotations.get_mut(&triple.relation).unwrap();
                             for (pair_idx, angle) in rot_mut.iter_mut().enumerate() {
                                 let i = pair_idx * 2;
                                 let j = i + 1;
@@ -427,18 +450,21 @@ impl KGEModel for AttH {
                             }
 
                             // Update reflection
-                            let ref_mut = self.relation_reflections.get_mut(&triple.relation).unwrap();
+                            let ref_mut =
+                                self.relation_reflections.get_mut(&triple.relation).unwrap();
                             for i in 0..self.dim {
                                 ref_mut[i] -= lr * 0.1 * (h[i] - t[i]);
                             }
 
                             // Update curvature (keep positive)
-                            let curv_mut = self.relation_curvatures.get_mut(&triple.relation).unwrap();
+                            let curv_mut =
+                                self.relation_curvatures.get_mut(&triple.relation).unwrap();
                             *curv_mut -= lr * 0.01 * (pos_score - neg_score);
                             *curv_mut = curv_mut.max(0.01).min(10.0);
 
                             // Update attention
-                            let att_mut = self.relation_attention.get_mut(&triple.relation).unwrap();
+                            let att_mut =
+                                self.relation_attention.get_mut(&triple.relation).unwrap();
                             att_mut.0 -= lr * 0.05;
                             att_mut.1 -= lr * 0.05;
 

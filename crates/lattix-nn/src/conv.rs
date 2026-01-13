@@ -50,7 +50,12 @@ impl GCNConv {
     /// - `out_features`: Output feature dimension
     /// - `bias`: Whether to include bias term
     /// - `vb`: Variable builder for parameter initialization
-    pub fn new(in_features: usize, out_features: usize, bias: bool, vb: VarBuilder) -> Result<Self> {
+    pub fn new(
+        in_features: usize,
+        out_features: usize,
+        bias: bool,
+        vb: VarBuilder,
+    ) -> Result<Self> {
         let linear = linear(in_features, out_features, vb)?;
         Ok(Self { linear, bias })
     }
@@ -83,8 +88,8 @@ impl GCNConv {
 /// Velickovic et al., "Graph Attention Networks", ICLR 2018.
 pub struct GATConv {
     linear: Linear,
-    att_src: Tensor,  // Attention vector for source nodes
-    att_dst: Tensor,  // Attention vector for destination nodes
+    att_src: Tensor, // Attention vector for source nodes
+    att_dst: Tensor, // Attention vector for destination nodes
     negative_slope: f64,
     num_heads: usize,
 }
@@ -106,7 +111,7 @@ impl GATConv {
         vb: VarBuilder,
     ) -> Result<Self> {
         let linear = linear(in_features, out_features * num_heads, vb.pp("lin"))?;
-        
+
         // Attention parameters: a = [a_src || a_dst]
         let att_src = vb.get((1, num_heads, out_features), "att_src")?;
         let att_dst = vb.get((1, num_heads, out_features), "att_dst")?;
@@ -130,23 +135,23 @@ impl GATConv {
     /// - Node embeddings (N x num_heads * out_features)
     pub fn forward(&self, x: &Tensor, _edge_index: &Tensor) -> Result<Tensor> {
         let n = x.dim(0)?;
-        
+
         // Linear projection: (N, in) -> (N, heads * out)
         let h = self.linear.forward(x)?;
-        
+
         // Reshape for multi-head: (N, heads, out)
         let out_per_head = h.dim(1)? / self.num_heads;
         let h = h.reshape((n, self.num_heads, out_per_head))?;
-        
+
         // Compute attention scores
         // alpha_src = (h * att_src).sum(-1)  -> (N, heads)
         let _alpha_src = h.broadcast_mul(&self.att_src)?.sum(D::Minus1)?;
         let _alpha_dst = h.broadcast_mul(&self.att_dst)?.sum(D::Minus1)?;
-        
+
         // For each edge (i, j): e_ij = LeakyReLU(alpha_src[i] + alpha_dst[j])
         // Then softmax over neighbors
         // This is a simplified version - full impl needs sparse attention
-        
+
         // For now, return transformed features (attention computation requires
         // sparse ops not yet in candle)
         h.reshape((n, self.num_heads * out_per_head))
@@ -543,7 +548,11 @@ impl GINConv {
             Tensor::zeros((1,), candle_core::DType::F32, vb.device())?
         };
 
-        Ok(Self { mlp, eps, learn_eps })
+        Ok(Self {
+            mlp,
+            eps,
+            learn_eps,
+        })
     }
 
     /// Forward pass.
@@ -751,12 +760,7 @@ impl RGCNConv {
     /// # Returns
     ///
     /// Updated node features (N x out_features)
-    pub fn forward(
-        &self,
-        x: &Tensor,
-        edge_index: &Tensor,
-        edge_type: &Tensor,
-    ) -> Result<Tensor> {
+    pub fn forward(&self, x: &Tensor, edge_index: &Tensor, edge_type: &Tensor) -> Result<Tensor> {
         let _n = x.dim(0)?;
         let _out_dim = self.self_weight.weight().dim(0)?;
         let _device = x.device();
@@ -923,12 +927,7 @@ impl ChebConv {
     /// - K=1: Equivalent to GCN (1-hop)
     /// - K=2-3: Good balance for most tasks
     /// - K>5: Rarely beneficial, increases computation
-    pub fn new(
-        in_features: usize,
-        out_features: usize,
-        k: usize,
-        vb: VarBuilder,
-    ) -> Result<Self> {
+    pub fn new(in_features: usize, out_features: usize, k: usize, vb: VarBuilder) -> Result<Self> {
         assert!(k >= 1, "Chebyshev degree K must be >= 1");
 
         let mut weights = Vec::with_capacity(k);
@@ -969,14 +968,14 @@ impl ChebConv {
         // T_1(L)x = Lx
         // T_k(L)x = 2L T_{k-1} - T_{k-2}
 
-        let mut t_prev = x.clone();  // T_0 = x
+        let mut t_prev = x.clone(); // T_0 = x
         let mut out = self.weights[0].forward(&t_prev)?;
 
         if self.k == 1 {
             return Ok(out);
         }
 
-        let mut t_curr = laplacian.matmul(x)?;  // T_1 = Lx
+        let mut t_curr = laplacian.matmul(x)?; // T_1 = Lx
         out = (out + self.weights[1].forward(&t_curr)?)?;
 
         for i in 2..self.k {
@@ -1207,12 +1206,8 @@ impl MPNNConv {
 
         for (dst_node, msg) in messages {
             aggregated[dst_node] = match self.aggregation {
-                Aggregation::Sum | Aggregation::Mean => {
-                    (&aggregated[dst_node] + &msg)?
-                }
-                Aggregation::Max => {
-                    aggregated[dst_node].maximum(&msg)?
-                }
+                Aggregation::Sum | Aggregation::Mean => (&aggregated[dst_node] + &msg)?,
+                Aggregation::Max => aggregated[dst_node].maximum(&msg)?,
             };
             counts[dst_node] += 1;
         }
@@ -1378,7 +1373,7 @@ impl PairNorm {
     pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
         // Center: subtract global mean
         let h = if self.center {
-            let mean = x.mean(0)?;  // (d,)
+            let mean = x.mean(0)?; // (d,)
             x.broadcast_sub(&mean)?
         } else {
             x.clone()
@@ -1386,12 +1381,12 @@ impl PairNorm {
 
         // Scale: row-wise L2 normalization
         // ||h_i|| = sqrt(sum(h_i^2))
-        let norm = h.sqr()?.sum(1)?.sqrt()?;  // (N,)
+        let norm = h.sqr()?.sum(1)?.sqrt()?; // (N,)
         let norm = norm.reshape((norm.elem_count(), 1))?;
-        
+
         // Avoid division by zero
         let norm = (norm + 1e-6)?;
-        
+
         // h_i / ||h_i|| * scale
         let normalized = h.broadcast_div(&norm)?;
         normalized * self.scale as f64
@@ -1489,7 +1484,9 @@ impl JumpingKnowledge {
     /// - Max/Sum/Mean: (N x d)
     pub fn forward(&self, layer_outputs: &[Tensor]) -> Result<Tensor> {
         if layer_outputs.is_empty() {
-            return Err(candle_core::Error::Msg("No layer outputs provided".to_string()));
+            return Err(candle_core::Error::Msg(
+                "No layer outputs provided".to_string(),
+            ));
         }
 
         match self.mode {
@@ -1529,7 +1526,7 @@ impl JumpingKnowledge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{Device, DType};
+    use candle_core::{DType, Device};
     use candle_nn::VarMap;
 
     #[test]
@@ -1684,10 +1681,11 @@ mod tests {
 
         // Edge index: 2 edges
         let edge_index = Tensor::from_vec(
-            vec![0i64, 1, 2, 3],  // sources: 0, 2; targets: 1, 3
+            vec![0i64, 1, 2, 3], // sources: 0, 2; targets: 1, 3
             (2, 2),
-            &device
-        ).unwrap();
+            &device,
+        )
+        .unwrap();
 
         // Edge types: relation 0 and relation 1
         let edge_type = Tensor::from_vec(vec![0i64, 1], (2,), &device).unwrap();
@@ -1707,7 +1705,7 @@ mod tests {
 
         let x = Tensor::randn(0f32, 1f32, (5, 32), &device).unwrap();
         let edge_index = Tensor::from_vec(vec![0i64, 1], (2, 1), &device).unwrap();
-        let edge_type = Tensor::from_vec(vec![5i64], (1,), &device).unwrap();  // relation 5
+        let edge_type = Tensor::from_vec(vec![5i64], (1,), &device).unwrap(); // relation 5
 
         let out = rgcn.forward(&x, &edge_index, &edge_type).unwrap();
         assert_eq!(out.dims(), &[5, 16]);
@@ -1782,22 +1780,28 @@ mod tests {
 
         // Use fixed data instead of random to avoid flaky tests
         let x = Tensor::from_vec(
-            vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
-                 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
-                 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0,
-                 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
-                 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5],
-            (5, 8), &device
-        ).unwrap();
-        
+            vec![
+                1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+                0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+                1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5,
+            ],
+            (5, 8),
+            &device,
+        )
+        .unwrap();
+
         let out = pn.forward(&x).unwrap();
 
         // After centering, mean should be close to zero
         let mean = out.mean(0).unwrap();
         let mean_vals = mean.to_vec1::<f32>().unwrap();
-        
+
         for val in mean_vals {
-            assert!(val.abs() < 0.1, "Mean should be near zero after centering, got {}", val);
+            assert!(
+                val.abs() < 0.1,
+                "Mean should be near zero after centering, got {}",
+                val
+            );
         }
     }
 
@@ -1822,7 +1826,7 @@ mod tests {
         let layer3 = Tensor::ones((5, 8), DType::F32, &device).unwrap();
 
         let out = jk.forward(&[layer1, layer2, layer3]).unwrap();
-        
+
         // Concat: 3 layers x 8 features = 24
         assert_eq!(out.dims(), &[5, 24]);
     }
@@ -1836,10 +1840,10 @@ mod tests {
         let layer2 = (Tensor::ones((5, 8), DType::F32, &device).unwrap() * 2.0).unwrap();
 
         let out = jk.forward(&[layer1, layer2]).unwrap();
-        
+
         // Max preserves shape
         assert_eq!(out.dims(), &[5, 8]);
-        
+
         // Values should be close to 2.0 (the max)
         let vals = out.to_vec2::<f32>().unwrap();
         for row in &vals {
@@ -1858,9 +1862,9 @@ mod tests {
         let layer2 = (Tensor::ones((3, 4), DType::F32, &device).unwrap() * 3.0).unwrap();
 
         let out = jk.forward(&[layer1, layer2]).unwrap();
-        
+
         assert_eq!(out.dims(), &[3, 4]);
-        
+
         // Mean of 1.0 and 3.0 = 2.0
         let vals = out.to_vec2::<f32>().unwrap();
         for row in &vals {

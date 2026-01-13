@@ -460,12 +460,10 @@ mod tests {
     fn test_hsimple_scoring() {
         let mut model = HSimplE::new(16, 4);
 
-        let facts = vec![
-            HyperFact::new("transaction")
-                .with_entity(0, "Alice")
-                .with_entity(1, "Item")
-                .with_entity(2, "Bob"),
-        ];
+        let facts = vec![HyperFact::new("transaction")
+            .with_entity(0, "Alice")
+            .with_entity(1, "Item")
+            .with_entity(2, "Bob")];
 
         let config = TrainingConfig::default()
             .with_embedding_dim(16)

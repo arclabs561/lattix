@@ -84,7 +84,11 @@ impl HyperFact {
     }
 
     /// Create from a triple (binary relation).
-    pub fn from_triple(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
+    pub fn from_triple(
+        head: impl Into<String>,
+        relation: impl Into<String>,
+        tail: impl Into<String>,
+    ) -> Self {
         Self {
             relation: relation.into(),
             entities: [(0, head.into()), (1, tail.into())].into_iter().collect(),
@@ -323,7 +327,8 @@ impl HypE {
 
                             // Update filter
                             let entity_emb = &self.entity_embeddings[entity];
-                            let filters = self.relation_filters.get_mut(&hyperedge.relation).unwrap();
+                            let filters =
+                                self.relation_filters.get_mut(&hyperedge.relation).unwrap();
                             for i in 0..self.dim {
                                 filters[position][i] += lr * entity_emb[i] * 0.5;
                             }
@@ -388,9 +393,9 @@ impl KGEModel for HypE {
 
     fn relation_embedding(&self, relation: &str) -> Option<Vec<f32>> {
         // Return flattened filters as "embedding"
-        self.relation_filters.get(relation).map(|filters| {
-            filters.iter().flat_map(|f| f.iter().copied()).collect()
-        })
+        self.relation_filters
+            .get(relation)
+            .map(|filters| filters.iter().flat_map(|f| f.iter().copied()).collect())
     }
 
     fn entity_embeddings(&self) -> &HashMap<String, Vec<f32>> {

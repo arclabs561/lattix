@@ -72,7 +72,11 @@ pub struct Fact<S = String> {
 impl<S> Fact<S> {
     /// Create a new fact from head, relation, tail.
     pub fn new(head: S, relation: S, tail: S) -> Self {
-        Self { head, relation, tail }
+        Self {
+            head,
+            relation,
+            tail,
+        }
     }
 }
 
@@ -252,11 +256,7 @@ pub trait KGEModel: Send + Sync {
         let entities: Vec<String> = self.entity_embeddings().keys().cloned().collect();
         let mut scores: Vec<(String, f32)> = entities
             .into_iter()
-            .filter_map(|e| {
-                self.score(head, relation, &e)
-                    .ok()
-                    .map(|s| (e, s))
-            })
+            .filter_map(|e| self.score(head, relation, &e).ok().map(|s| (e, s)))
             .collect();
 
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -275,11 +275,7 @@ pub trait KGEModel: Send + Sync {
         let entities: Vec<String> = self.entity_embeddings().keys().cloned().collect();
         let mut scores: Vec<(String, f32)> = entities
             .into_iter()
-            .filter_map(|e| {
-                self.score(&e, relation, tail)
-                    .ok()
-                    .map(|s| (e, s))
-            })
+            .filter_map(|e| self.score(&e, relation, tail).ok().map(|s| (e, s)))
             .collect();
 
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));

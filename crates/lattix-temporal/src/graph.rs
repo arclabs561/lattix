@@ -172,7 +172,15 @@ impl TemporalGraph {
         let mut paths = Vec::new();
         let mut current_path = Vec::new();
 
-        self.dfs_temporal_paths(src, dst, start, end, max_hops, &mut current_path, &mut paths);
+        self.dfs_temporal_paths(
+            src,
+            dst,
+            start,
+            end,
+            max_hops,
+            &mut current_path,
+            &mut paths,
+        );
 
         paths
     }
@@ -296,7 +304,7 @@ mod tests {
 
         // Alternative path with wrong time order (won't work)
         tg.add_edge(TemporalEdge::new(0, 3, 300));
-        tg.add_edge(TemporalEdge::new(3, 2, 150));  // This happens BEFORE 0->3
+        tg.add_edge(TemporalEdge::new(3, 2, 150)); // This happens BEFORE 0->3
 
         let paths = tg.temporal_paths(0, 2, 0, 500, 3);
 
