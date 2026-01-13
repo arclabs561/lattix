@@ -111,3 +111,20 @@ type_complexity = "allow"
 multiple_crate_versions = "allow"
 wrong_self_convention = "allow"
 module_name_repetitions = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = 1  # Enable symbols for flamegraph/perf
+
+[profile.bench]
+lto = "thin"
+codegen-units = 1
+debug = 1
+
+[profile.release-optimized]
+inherits = "release"
+lto = "fat"
+panic = "abort"
+strip = true
+debug = false
