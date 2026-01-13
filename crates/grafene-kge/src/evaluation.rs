@@ -135,12 +135,16 @@ impl RankMetrics {
 /// Triple for evaluation (using string IDs).
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct EvalTriple {
+    /// Head entity identifier.
     pub head: String,
+    /// Relation type identifier.
     pub relation: String,
+    /// Tail entity identifier.
     pub tail: String,
 }
 
 impl EvalTriple {
+    /// Create a new evaluation triple.
     pub fn new(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
         Self {
             head: head.into(),
@@ -175,6 +179,7 @@ pub struct Evaluator {
 }
 
 impl Evaluator {
+    /// Create a new evaluator with no known triples.
     pub fn new() -> Self {
         Self {
             known_triples: HashSet::new(),

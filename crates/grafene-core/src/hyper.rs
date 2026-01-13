@@ -128,6 +128,7 @@ pub struct RoleBinding {
 }
 
 impl RoleBinding {
+    /// Create a new role-entity binding.
     pub fn new(role: impl Into<String>, entity: impl Into<EntityId>) -> Self {
         Self {
             role: role.into(),

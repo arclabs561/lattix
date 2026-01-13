@@ -38,7 +38,7 @@
 //! let embeddings = trainer.train_transe(&triples)?;
 //! ```
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use std::collections::{HashMap, HashSet};
 
 /// Training configuration.
@@ -81,31 +81,37 @@ impl Default for TrainingConfig {
 }
 
 impl TrainingConfig {
+    /// Set embedding dimension.
     pub fn with_embedding_dim(mut self, dim: usize) -> Self {
         self.embedding_dim = dim;
         self
     }
 
+    /// Set learning rate.
     pub fn with_learning_rate(mut self, lr: f32) -> Self {
         self.learning_rate = lr;
         self
     }
 
+    /// Set number of training epochs.
     pub fn with_epochs(mut self, epochs: usize) -> Self {
         self.epochs = epochs;
         self
     }
 
+    /// Set batch size.
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size;
         self
     }
 
+    /// Set number of negative samples per positive.
     pub fn with_negative_samples(mut self, n: usize) -> Self {
         self.negative_samples = n;
         self
     }
 
+    /// Set margin for margin-based ranking loss.
     pub fn with_margin(mut self, margin: f32) -> Self {
         self.margin = margin;
         self
@@ -115,12 +121,16 @@ impl TrainingConfig {
 /// A triple in a knowledge graph.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Triple {
+    /// Head entity identifier.
     pub head: String,
+    /// Relation type identifier.
     pub relation: String,
+    /// Tail entity identifier.
     pub tail: String,
 }
 
 impl Triple {
+    /// Create a new triple.
     pub fn new(head: impl Into<String>, relation: impl Into<String>, tail: impl Into<String>) -> Self {
         Self {
             head: head.into(),
@@ -151,6 +161,7 @@ pub struct KGETrainer {
 }
 
 impl KGETrainer {
+    /// Create a new trainer with the given configuration.
     pub fn new(config: TrainingConfig) -> Self {
         Self { config }
     }
