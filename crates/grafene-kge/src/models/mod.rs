@@ -20,7 +20,8 @@
 //!
 //! | Model | Description | Feature |
 //! |-------|-------------|---------|
-//! | `MuRP` | Hyperbolic translations | `hyperbolic` |
+//! | `MuRP` | Hyperbolic translations (Balazevic 2019) | `hyperbolic` |
+//! | `RotH` | Hyperbolic rotations (Chami 2020) | `hyperbolic` |
 //! | `TransEBurn` | TransE on Burn | `burn` |
 //!
 //! # Example
@@ -54,6 +55,11 @@ pub use transe::TransE;
 mod murp;
 #[cfg(feature = "hyperbolic")]
 pub use murp::MuRP;
+
+#[cfg(feature = "hyperbolic")]
+mod roth;
+#[cfg(feature = "hyperbolic")]
+pub use roth::RotH;
 
 // ONNX inference (pre-trained models)
 // NOTE: Disabled until ndarray version is aligned with ort crate requirements

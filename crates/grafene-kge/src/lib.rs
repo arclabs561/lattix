@@ -194,6 +194,9 @@ pub use models::{BoxE, TransE};
 #[cfg(feature = "hyperbolic")]
 pub use models::MuRP;
 
+#[cfg(feature = "hyperbolic")]
+pub use models::RotH;
+
 // NOTE: KGEOnnx disabled until ndarray version aligned with ort crate
 // #[cfg(feature = "onnx")]
 // pub use models::KGEOnnx;

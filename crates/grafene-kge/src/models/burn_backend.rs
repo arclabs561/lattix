@@ -250,33 +250,46 @@ impl<B: Send + Sync + 'static> KGEModel for TransEBurn<B> {
                         if loss > 0.0 {
                             let lr = config.learning_rate;
 
-                            // Gradient update (simplified)
-                            let h_mut = self.entity_embeddings.get_mut(&triple.head).unwrap();
-                            let t_mut = self.entity_embeddings.get_mut(&triple.tail).unwrap();
-                            let r_mut = self
-                                .relation_embeddings
-                                .get_mut(&triple.relation)
-                                .unwrap();
+                            // Compute gradients first
+                            let mut h_grad = vec![0.0f32; self.dim];
+                            let mut t_grad = vec![0.0f32; self.dim];
+                            let mut r_grad = vec![0.0f32; self.dim];
 
                             for i in 0..self.dim {
                                 let grad = (h[i] + r[i] - t[i])
                                     / (pos_score.abs() + 1e-8)
                                     * config.margin.signum();
 
-                                h_mut[i] -= lr * grad;
-                                r_mut[i] -= lr * grad;
-                                t_mut[i] += lr * grad;
+                                h_grad[i] = lr * grad;
+                                r_grad[i] = lr * grad;
+                                t_grad[i] = -lr * grad;
                             }
 
-                            // Normalize embeddings
+                            // Apply gradients
+                            let h_mut = self.entity_embeddings.get_mut(&triple.head).unwrap();
+                            for i in 0..self.dim {
+                                h_mut[i] -= h_grad[i];
+                            }
                             let h_norm: f32 = h_mut.iter().map(|x| x * x).sum::<f32>().sqrt();
-                            let t_norm: f32 = t_mut.iter().map(|x| x * x).sum::<f32>().sqrt();
-
                             if h_norm > 1.0 {
                                 h_mut.iter_mut().for_each(|x| *x /= h_norm);
                             }
+
+                            let t_mut = self.entity_embeddings.get_mut(&triple.tail).unwrap();
+                            for i in 0..self.dim {
+                                t_mut[i] -= t_grad[i];
+                            }
+                            let t_norm: f32 = t_mut.iter().map(|x| x * x).sum::<f32>().sqrt();
                             if t_norm > 1.0 {
                                 t_mut.iter_mut().for_each(|x| *x /= t_norm);
+                            }
+
+                            let r_mut = self
+                                .relation_embeddings
+                                .get_mut(&triple.relation)
+                                .unwrap();
+                            for i in 0..self.dim {
+                                r_mut[i] -= r_grad[i];
                             }
 
                             num_updates += 1;

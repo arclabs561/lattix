@@ -624,7 +624,7 @@ pub mod boxe {
 
     /// Convert grafene triples to subsume format.
     pub fn to_subsume_triples(triples: &[Triple]) -> Vec<SubsumeTriple> {
-        use crate::TripleKGE;
+        use super::TripleKGE;
         triples
             .iter()
             .map(|t| SubsumeTriple {
@@ -712,7 +712,7 @@ pub mod boxe {
     ///
     /// BoxE result with entity points and relation boxes.
     pub fn train_boxe(triples: &[Triple], config: BoxEConfig) -> Result<BoxEResult> {
-        use crate::TripleKGE;
+        use super::TripleKGE;
         
         // Extract vocabulary
         let mut entities = HashSet::new();
