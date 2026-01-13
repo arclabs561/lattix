@@ -1,48 +1,81 @@
-//! Skip-gram training for node embeddings.
+//! Skip-gram training for node embeddings (Node2Vec).
 //!
-//! Implements the Node2Vec algorithm:
-//! 1. Generate biased random walks from graph
-//! 2. Train Skip-gram model on walks
-//! 3. Output: node embeddings
+//! # The Core Insight
 //!
-//! Walk generation is in `nexus-core::algo::random_walk`.
-//! This module handles the Skip-gram training.
+//! Nodes appearing in similar random walk contexts should have similar embeddings.
+//! This is Word2Vec applied to graphs: walks are "sentences," nodes are "words."
 //!
-//! # Algorithm
+//! # Mathematical Foundation
 //!
-//! For each node in each walk:
-//! - Predict context nodes within window
-//! - Use negative sampling for efficiency
-//! - SGD update on embedding vectors
+//! Skip-gram with negative sampling (SGNS) optimizes:
+//!
+//! ```text
+//! L = log σ(v_target · v_center) + Σᵢ E[log σ(-v_neg · v_center)]
+//! ```
+//!
+//! **Key theoretical result** (Levy & Goldberg 2014): SGNS implicitly factorizes
+//! a shifted PMI matrix:
+//!
+//! ```text
+//! v_w · v_c ≈ PMI(w, c) - log k
+//! ```
+//!
+//! where PMI(w, c) = log(P(w,c) / P(w)P(c)) measures co-occurrence beyond chance.
+//! This explains why embeddings capture semantic relationships—the dot product
+//! approximates pointwise mutual information.
+//!
+//! ## Why Negative Sampling Works
+//!
+//! Full softmax requires summing over all nodes (expensive). Negative sampling
+//! converts multinomial classification into binary classification:
+//!
+//! - **Positive sample**: (center, context) pairs from actual walks
+//! - **Negative samples**: Random nodes drawn from frequency distribution
+//!
+//! The 3/4 power in sampling distribution (freq^0.75) smooths between:
+//! - freq^1 (unigram): Over-samples common nodes
+//! - freq^0 (uniform): Over-samples rare nodes
+//!
+//! ## Node2Vec Walk Bias
+//!
+//! Random walks are biased by parameters p and q:
+//!
+//! - **p (return)**: Likelihood of returning to previous node
+//!   - Low p → Stay local (BFS-like exploration)
+//! - **q (in-out)**: Likelihood of moving outward vs inward
+//!   - Low q → Explore outward (DFS-like exploration)
+//!
+//! ```text
+//! p=1, q=1: Unbiased random walk (DeepWalk)
+//! p=1, q=0.5: Encourage outward exploration
+//! p=0.5, q=1: Encourage local exploration
+//! ```
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use propago::node2vec::{SkipGram, SkipGramConfig};
+//! use grafene_nn::node2vec::{SkipGram, SkipGramConfig};
 //!
 //! let config = SkipGramConfig {
 //!     embedding_dim: 128,
 //!     window_size: 5,
-//!     negative_samples: 5,
+//!     negative_samples: 5,  // k=5 typical for large graphs
 //!     learning_rate: 0.025,
-//!     min_learning_rate: 0.0001,
 //!     ..Default::default()
 //! };
 //!
 //! let mut model = SkipGram::new(num_nodes, config);
-//!
-//! // Walks from nexus-core::algo::random_walk::Node2Vec
 //! for walk in walks {
 //!     model.train_walk(&walk);
 //! }
-//!
 //! let embeddings = model.embeddings();
 //! ```
 //!
-//! # Reference
+//! # References
 //!
-//! - Grover & Leskovec, "node2vec: Scalable Feature Learning for Networks", KDD 2016
-//! - Mikolov et al., "Distributed Representations of Words and Phrases", NeurIPS 2013
+//! - Grover & Leskovec (2016). "node2vec: Scalable Feature Learning for Networks."
+//! - Mikolov et al. (2013). "Distributed Representations of Words and Phrases."
+//! - Levy & Goldberg (2014). "Neural Word Embedding as Implicit Matrix Factorization."
 
 use rand::prelude::*;
 use rand_distr::Uniform;
