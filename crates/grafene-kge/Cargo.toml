@@ -14,7 +14,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 ort = { optional = true, version = "2.0.0-rc", features = ["ndarray"] }
-ndarray = "0.17.2"
+ndarray = "0.16"
 
 # Box embeddings for containment/hierarchy modeling (BoxE)
 subsume-core = { path = "../../../subsume/subsume-core", optional = true }
@@ -31,6 +31,8 @@ ort = ["dep:ort"]
 boxe = ["subsume-core", "subsume-ndarray"]
 # Hyperbolic KGE (MuRP, RotH, AttH style)
 hyperbolic = ["hyperball"]
+# Training with proper optimizers (Adam, AdamW)
+training = ["subsume-ndarray"]
 
 [dev-dependencies]
 proptest = { workspace = true }
