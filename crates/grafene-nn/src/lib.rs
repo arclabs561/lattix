@@ -74,6 +74,25 @@
 //! - **p** (return): Low p → stay local (BFS-like)
 //! - **q** (in-out): Low q → explore outward (DFS-like)
 //!
+//! ## Contrastive Learning: A Critical Nuance
+//!
+//! Many GNN methods use contrastive loss (InfoNCE):
+//!
+//! ```text
+//! L = -log[exp(sim(q, k+)/τ) / Σ exp(sim(q, k)/τ)]
+//! ```
+//!
+//! **Temperature τ matters enormously**:
+//! - Low τ (0.05-0.1): Sharp distributions, tight clusters
+//! - High τ (0.5-1.0): Soft distributions, spread embeddings
+//!
+//! **Hard negatives are critical**: Random negatives are often too easy.
+//! The model learns faster from negatives that are similar but not identical.
+//! Mix query with negative: h' = β×q + (1-β)×n, β ∈ (0, 0.5).
+//!
+//! **In-batch negatives**: Use other samples in the batch as negatives.
+//! A batch of N samples provides N-1 negatives per positive, efficiently.
+//!
 //! ## When to Use What
 //!
 //! | Method | Best For | Scalability |
