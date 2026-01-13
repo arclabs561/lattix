@@ -180,6 +180,7 @@ mod error;
 pub mod formats;
 mod graph;
 pub mod hetero;
+pub mod hyper;
 mod relation;
 mod triple;
 
@@ -190,6 +191,7 @@ pub use entity::{Entity, EntityId};
 pub use error::{Error, Result};
 pub use graph::{KnowledgeGraph, KnowledgeGraphStats};
 pub use hetero::{EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType};
+pub use hyper::{HyperEdge, HyperGraph, HyperTriple, RoleBinding};
 pub use relation::{Relation, RelationType};
 pub use triple::Triple;
 
