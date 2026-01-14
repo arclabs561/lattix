@@ -108,7 +108,7 @@ pub fn closeness_centrality(kg: &KnowledgeGraph, config: ClosenessConfig) -> Has
     let mut result = HashMap::with_capacity(n);
 
     for source in graph.node_indices() {
-        let distances = bfs_distances(&graph, source, config.undirected);
+        let distances = bfs_distances(graph, source, config.undirected);
 
         let closeness = if config.harmonic {
             // Harmonic: Σ 1/d(v,u) for all reachable u

@@ -6,6 +6,8 @@ description = "Temporal graph primitives: time-evolving graphs, temporal message
 license = "MIT OR Apache-2.0"
 keywords = ["temporal", "graph", "time-series", "dynamic-graph"]
 categories = ["science", "data-structures"]
+repository = "https://github.com/arclabs561/lattix"
+readme = "README.md"
 
 [dependencies]
 # Structure Layer

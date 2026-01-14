@@ -118,7 +118,7 @@ pub fn betweenness_centrality(
 
     // Run BFS from each source
     for s in graph.node_indices() {
-        let (sigma, predecessors, order) = bfs_shortest_paths(&graph, s, config.undirected);
+        let (sigma, predecessors, order) = bfs_shortest_paths(graph, s, config.undirected);
 
         // Backward pass: accumulate dependencies
         let mut delta = vec![0.0_f64; n];

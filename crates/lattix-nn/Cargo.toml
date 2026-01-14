@@ -6,6 +6,8 @@ description = "Graph neural network layers: GCN, GAT, GraphSAGE, Node2Vec, hyper
 license = "MIT OR Apache-2.0"
 keywords = ["gnn", "graph-neural-network", "machine-learning", "deep-learning"]
 categories = ["science", "mathematics"]
+repository = "https://github.com/arclabs561/lattix"
+readme = "README.md"
 
 [features]
 default = ["node2vec"]
