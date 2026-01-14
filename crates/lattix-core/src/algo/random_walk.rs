@@ -115,7 +115,9 @@ impl<'a> Node2Vec<'a> {
             if neighbors.is_empty() {
                 break;
             }
-            curr = *neighbors.choose(rng).unwrap();
+            curr = *neighbors
+                .choose(rng)
+                .unwrap_or_else(|| panic!("neighbors cannot be empty (checked above)"));
             walk.push(graph[curr].id.0.clone());
         }
         walk

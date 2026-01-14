@@ -231,7 +231,7 @@ impl<'a> NeighborSampler<'a> {
             for node_id in &frontier {
                 let src_idx = *node_to_idx
                     .get(node_id)
-                    .expect("frontier node should exist");
+                    .unwrap_or_else(|| panic!("frontier node {node_id} should exist"));
                 let entity_id = crate::EntityId::from(node_id.as_str());
 
                 if let Some(node_idx) = self.kg.get_node_index(&entity_id) {
