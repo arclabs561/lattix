@@ -185,6 +185,7 @@ impl TemporalGraph {
         paths
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn dfs_temporal_paths(
         &self,
         current: u32,
