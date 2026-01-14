@@ -141,7 +141,9 @@ impl<'a> Node2Vec<'a> {
                 self.sample_biased_rejection(rng, prev_node, &prev_neighbors, &neighbors)
             } else {
                 // First step: uniform
-                *neighbors.choose(rng).unwrap()
+                *neighbors
+                    .choose(rng)
+                    .unwrap_or_else(|| panic!("neighbors should not be empty"))
             };
 
             walk.push(graph[next].id.0.clone());
