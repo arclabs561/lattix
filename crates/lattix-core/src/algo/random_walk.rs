@@ -176,7 +176,9 @@ impl<'a> Node2Vec<'a> {
         let max_prob = (1.0 / p).max(1.0).max(1.0 / q);
 
         loop {
-            let candidate = *neighbors.choose(rng).unwrap();
+            let candidate = *neighbors
+                .choose(rng)
+                .unwrap_or_else(|| panic!("neighbors should not be empty (checked by caller)"));
             let r: f64 = rng.random();
 
             let unnorm_prob = if candidate == prev_node {
