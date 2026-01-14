@@ -1,12 +1,4 @@
-<p align="center"><b>lattix</b></p>
-
-```mermaid
-graph LR
-    A[Apple] -->|founded_by| S[Steve Jobs]
-    A -->|produces| I[iPhone]
-    S -->|worked_at| A
-    I -->|designed_at| A
-```
+# lattix
 
 Knowledge graph construction, analysis, and embedding inference.
 

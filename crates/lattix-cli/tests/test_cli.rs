@@ -15,7 +15,7 @@ fn test_cli_stats() -> Result<(), Box<dyn std::error::Error>> {
     let file = dir.join("test_stats.nt");
     fs::write(&file, "<http://a> <http://b> <http://c> .")?;
 
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("stats").arg(&file);
     cmd.assert()
         .success()
@@ -39,7 +39,7 @@ fn test_cli_walks() -> Result<(), Box<dyn std::error::Error>> {
 "#;
     fs::write(&input, content)?;
 
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("walks")
         .arg(&input)
         .arg("-o")
@@ -87,7 +87,7 @@ fn test_full_pipeline_csv() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(&input, content)?;
 
     // 1. Stats
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("stats").arg(&input);
     cmd.assert()
         .success()
@@ -95,7 +95,7 @@ fn test_full_pipeline_csv() -> Result<(), Box<dyn std::error::Error>> {
         .stdout(predicate::str::contains("Triples:        4"));
 
     // 2. Components (WCC - weakly connected, treating edges as undirected)
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("components").arg(&input).arg("--verbose");
     cmd.assert()
         .success()
@@ -103,7 +103,7 @@ fn test_full_pipeline_csv() -> Result<(), Box<dyn std::error::Error>> {
         .stdout(predicate::str::contains("3 nodes")); // The larger component
 
     // 3. PageRank
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("pagerank").arg(&input).arg("--top").arg("5");
     cmd.assert()
         .success()
@@ -111,7 +111,7 @@ fn test_full_pipeline_csv() -> Result<(), Box<dyn std::error::Error>> {
         .stdout(predicate::str::contains("Bob"));
 
     // 4. Walks
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("walks")
         .arg(&input)
         .arg("-o")
@@ -127,12 +127,12 @@ fn test_full_pipeline_csv() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!walks.is_empty());
 
     // 5. Save/Load Binary
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("save").arg(&input).arg(&binary_out);
     cmd.assert().success();
     assert!(binary_out.exists());
 
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_lattice"));
+    let mut cmd = Command::cargo_bin("lattix")?;
     cmd.arg("stats").arg(&binary_out);
     cmd.assert()
         .success()
