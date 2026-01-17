@@ -1,0 +1,53 @@
+[package]
+name = "lattix-kge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Knowledge Graph Embeddings: TransE, RotatE, ComplEx, DistMult - inference via ONNX"
+publish = false
+
+[dependencies]
+lattix-core = { path = "../lattix-core" }
+fynch = { path = "../fynch" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ort = { optional = true, version = "2.0.0-rc.5", features = ["ndarray"] }
+ndarray = "0.16"
+
+# Box embeddings for containment/hierarchy modeling (BoxE)
+# Keep these as local path dependencies while lattix-kge is `publish = false`.
+subsume-core = { path = "../subsume/subsume-core", optional = true }
+subsume-ndarray = { path = "../subsume/subsume-ndarray", optional = true }
+
+# Hyperbolic embeddings for tree-like hierarchies
+hyp = { path = "../hyp", optional = true }
+rand = { version = "0.9", optional = true }
+
+[features]
+default = []
+onnx = ["ort"]
+ort = ["dep:ort"]
+# BoxE-style containment embeddings
+boxe = ["subsume-core", "subsume-ndarray"]
+# Hyperbolic KGE (MuRP, RotH, AttH style)
+hyperbolic = ["hyp", "rand"]
+# Training with proper optimizers (Adam, AdamW)
+training = ["subsume-ndarray"]
+# GPU acceleration via Burn
+# Note: Using ndarray backend for CPU, wgpu available for GPU
+burn = ["dep:burn"]
+
+[dependencies.burn]
+version = "0.19"
+optional = true
+default-features = false
+features = ["ndarray", "autodiff"]
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[lints]
+workspace = true
