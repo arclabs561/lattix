@@ -1,5 +1,5 @@
 [package]
-name = "lattix-temporal"
+name = "jala-temporal"
 version = "0.1.0"
 edition = "2021"
 description = "Temporal graph primitives: time-evolving graphs, temporal message passing"

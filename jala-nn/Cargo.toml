@@ -1,5 +1,5 @@
 [package]
-name = "lattix-nn"
+name = "jala-nn"
 version = "0.1.0"
 edition = "2021"
 description = "Graph neural network layers: GCN, GAT, GraphSAGE, Node2Vec, hyperbolic GNN"

@@ -1,5 +1,5 @@
 [package]
-name = "lattix-kge"
+name = "jala-kge"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

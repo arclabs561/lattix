@@ -1,5 +1,5 @@
 [package]
-name = "lattix-cli"
+name = "jala-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
