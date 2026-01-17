@@ -1,0 +1,27 @@
+[package]
+name = "jala-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "CLI for knowledge graph operations"
+publish = false
+
+[[bin]]
+name = "lattix"
+path = "src/main.rs"
+
+[dependencies]
+lattix = { path = "../lattix" }
+# CLI needs binary feature for .bin file support
+lattix-core = { path = "../lattix-core", features = ["binary"] }
+
+clap = { version = "4", features = ["derive"] }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+indicatif = "0.18.3"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"

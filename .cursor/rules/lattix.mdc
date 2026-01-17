@@ -1,0 +1,47 @@
+---
+title: "Lattix Rules"
+id: lattix-rules
+description: "Rules for the Lattix graph learning stack (Structure, Learning, Temporal)"
+priority: 100
+alwaysApply: true
+---
+
+# Lattix Rules
+
+## General Principles
+
+- Prefer simplicity over complexity.
+- Use real data, not synthetic examples.
+- Code-driven visualizations and documentation.
+- Comprehensive error handling and validation.
+
+## Architecture
+
+Lattix is a monorepo containing:
+- **lattix-core**: Graph structure, IO, algorithms (lightweight, no heavy ML).
+- **lattix-nn**: GNN layers, KGE scoring (depends on Candle/Burn).
+- **lattix-temporal**: Temporal graph primitives.
+- **lattix-kge**: Knowledge Graph Embedding inference (ONNX).
+
+**Rule**: Keep `lattix-core` lightweight. Do not add heavy ML dependencies to it.
+
+## Rust Standards
+
+- All code must compile (`cargo check`).
+- All code must be formatted (`cargo fmt`).
+- All clippy warnings must be fixed (`cargo clippy -- -D warnings`).
+- Tests should pass (`cargo test`).
+- Use `Result<T, E>` for fallible operations.
+- Avoid `unwrap()` in production code.
+
+## Documentation
+
+- Comprehensive docstrings explaining purpose and usage.
+- Examples in documentation.
+- Quality standards noted.
+
+## Anti-Sycophancy
+
+- Challenge assumptions and identify issues.
+- Present alternative approaches with trade-offs.
+- Use direct technical language.
