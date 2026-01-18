@@ -6,7 +6,9 @@ rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 authors = ["Arc <attobop@gmail.com>"]
 description = "Graph/KG substrate: triples + PageRank + random walks"
-publish = false
+repository = "https://github.com/arclabs561/lattix"
+homepage = "https://github.com/arclabs561/lattix"
+documentation = "https://docs.rs/lattix"
 
 [dependencies]
 petgraph = "0.6"
