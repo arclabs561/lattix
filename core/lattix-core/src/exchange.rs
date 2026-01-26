@@ -13,6 +13,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::{Entity, EntityId, KnowledgeGraph, RelationType, Triple};
+
 /// A node in an interchange graph.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNode {
@@ -134,6 +136,42 @@ impl GraphDocument {
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
+    }
+
+    /// Convert this interchange `GraphDocument` into a `KnowledgeGraph`.
+    ///
+    /// - Nodes become `Entity` records (id/label/type/properties).
+    /// - Edges become `Triple` records (subject/predicate/object), with optional confidence.
+    #[must_use]
+    pub fn to_knowledge_graph(&self) -> KnowledgeGraph {
+        let mut kg = KnowledgeGraph::new();
+
+        // 1) Nodes
+        for node in &self.nodes {
+            let id = EntityId::new(node.id.clone());
+            let mut ent = Entity::new(id.clone())
+                .with_label(node.name.clone())
+                .with_type(node.node_type.clone());
+            for (k, v) in &node.properties {
+                ent.properties.insert(k.clone(), v.clone());
+            }
+            kg.upsert_entity(ent);
+        }
+
+        // 2) Edges
+        for edge in &self.edges {
+            let mut t = Triple::new(
+                EntityId::new(edge.source.clone()),
+                RelationType::new(edge.relation.clone()),
+                EntityId::new(edge.target.clone()),
+            );
+            if (edge.confidence - 1.0).abs() > f64::EPSILON {
+                t = t.with_confidence(edge.confidence as f32);
+            }
+            kg.add_triple(t);
+        }
+
+        kg
     }
 
     /// Get node count.
@@ -398,5 +436,38 @@ fn sanitize_cypher_name(s: &str) -> String {
     s.chars()
         .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn graph_document_to_knowledge_graph_roundtrip_shape() {
+        let doc = GraphDocument {
+            nodes: vec![
+                GraphNode::new("a", "Person", "Alice").with_property("age", 30),
+                GraphNode::new("b", "Org", "OpenAI"),
+            ],
+            edges: vec![GraphEdge::new("a", "b", "WORKS_AT").with_confidence(0.7)],
+            metadata: HashMap::new(),
+        };
+
+        let kg = doc.to_knowledge_graph();
+        assert_eq!(kg.entity_count(), 2);
+        assert_eq!(kg.triple_count(), 1);
+
+        let triples: Vec<_> = kg.triples().collect();
+        assert_eq!(triples[0].subject.as_str(), "a");
+        assert_eq!(triples[0].predicate.as_str(), "WORKS_AT");
+        assert_eq!(triples[0].object.as_str(), "b");
+        assert_eq!(triples[0].confidence, Some(0.7));
+
+        let alice = kg.get_entity(&EntityId::new("a")).unwrap();
+        assert_eq!(alice.label.as_deref(), Some("Alice"));
+        assert_eq!(alice.entity_type.as_deref(), Some("Person"));
+        assert_eq!(alice.properties.get("age").unwrap(), &serde_json::Value::from(30));
+    }
 }
 

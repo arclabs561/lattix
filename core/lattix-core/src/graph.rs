@@ -284,6 +284,20 @@ impl KnowledgeGraph {
         }
     }
 
+    /// Insert or update an entity by id.
+    ///
+    /// Unlike `update_entity`, this will create a new entity node if one does not already exist.
+    pub fn upsert_entity(&mut self, entity: Entity) {
+        let id = entity.id.clone();
+        if let Some(&idx) = self.entity_index.get(&id) {
+            self.graph[idx] = entity;
+            return;
+        }
+
+        let idx = self.graph.add_node(entity);
+        self.entity_index.insert(id, idx);
+    }
+
     /// Get all triples where the given entity is the subject.
     /// O(d) where d is the out-degree of the entity.
     pub fn relations_from(&self, subject: impl Into<EntityId>) -> Vec<&Triple> {
