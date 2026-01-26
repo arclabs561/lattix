@@ -1,11 +1,11 @@
 # lattix
 
-Knowledge graph construction, analysis, and embedding inference.
+Knowledge graph **substrate**: core types + basic algorithms + formats.
 
 Dual-licensed under MIT or Apache-2.0.
 
 ```rust
-use lattix_core::{KnowledgeGraph, Triple};
+use lattix::{KnowledgeGraph, Triple};
 
 let mut kg = KnowledgeGraph::new();
 kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
@@ -20,15 +20,14 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 
 | Crate | Purpose |
 |-------|---------|
-| `lattix-core` | Graph storage, PageRank, Random Walks |
-| `lattix-nn` | Node2Vec, GNN layers |
-| `lattix-kge` | Knowledge Graph Embeddings (TransE, RotatE) |
-| `lattix-temporal` | Time-aware graph queries |
-| `lattix-cli` | Command-line interface |
-| `lattix-py` | Python bindings |
+| `lattix` | Minimal facade crate (preferred import); **minimal by default** |
+| `lattix-core` | Core implementation: storage, PageRank, random walks, formats |
 
 ## Embedding Backends
 
-- **BoxE**: Containment embeddings (via `subsume`)
-- **Hyperbolic**: Hierarchy embeddings (via `hyperball`)
-- **ONNX**: TransE, RotatE, ComplEx inference
+These backends and training/inference systems live in `webs/*` (L5). `lattix` stays substrate-only.
+
+## Relationship to `webs`
+
+`webs/*` is the home for higher-level KG systems (reasoning, training/inference, temporal systems, CLI).
+It depends on this repo’s L3 substrate (`lattix` / `lattix-core`).

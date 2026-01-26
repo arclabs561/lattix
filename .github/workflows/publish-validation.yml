@@ -18,7 +18,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: cargo publish (dry-run)
-        run: cargo publish --dry-run
+        run: cargo publish -p lattix --dry-run
 
       - name: crates.io status (lattix)
         run: |

@@ -1,0 +1,23 @@
+[package]
+name = "lattix"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Knowledge graph substrate: core types + basic algorithms + formats"
+publish = true
+
+[dependencies]
+lattix-core = { path = "../core/lattix-core" }
+
+[features]
+# Minimal by default: dependents opt into formats/algorithms explicitly.
+default = []
+formats = ["lattix-core/formats"]
+algo = ["lattix-core/algo"]
+binary = ["lattix-core/binary"]
+sophia = ["lattix-core/sophia"]
+
+[lints]
+workspace = true

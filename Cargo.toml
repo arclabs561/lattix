@@ -1,17 +1,28 @@
-[package]
-name = "lattix"
-version = "0.1.0"
+[workspace]
+resolver = "2"
+members = [
+  "core/lattix-core",
+  "lattix",
+]
+
+[workspace.package]
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 authors = ["Arc <attobop@gmail.com>"]
-description = "Graph/KG substrate: triples + PageRank + random walks"
 repository = "https://github.com/arclabs561/lattix"
-homepage = "https://github.com/arclabs561/lattix"
-documentation = "https://docs.rs/lattix"
 
-[dependencies]
-petgraph = "0.6"
-rand = "0.8"
-rand_chacha = "0.3"
+[workspace.lints.rust]
+unsafe_code = "warn"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+restriction = { level = "allow", priority = -1 }
 

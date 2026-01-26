@@ -84,7 +84,8 @@ def generate_kg_viz():
     plt.axis('off')
     plt.tight_layout()
     
-    output_path = "/Users/arc/Documents/dev/lattice/hack/viz/kg_structure.png"
+    # Default to a local relative path to keep this portable (and public-safe).
+    output_path = "kg_structure.png"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Generated {output_path}")
 
