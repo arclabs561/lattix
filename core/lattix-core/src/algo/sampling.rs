@@ -4,9 +4,9 @@
 //!
 //! # Key Types
 //!
-//! - [`sample_neighbors`] - Sample up to k neighbors for each node (single hop)
-//! - [`NeighborSampler`] - Multi-hop sampler for GraphSAGE-style training
-//! - [`SubgraphBatch`] - Result of multi-hop sampling, contains induced subgraph
+//! - [`crate::algo::sampling::sample_neighbors`] - Sample up to k neighbors for each node (single hop)
+//! - [`crate::algo::sampling::NeighborSampler`] - Multi-hop sampler for GraphSAGE-style training
+//! - [`crate::algo::sampling::SubgraphBatch`] - Result of multi-hop sampling, contains induced subgraph
 
 use crate::KnowledgeGraph;
 use rand::prelude::*;

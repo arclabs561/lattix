@@ -21,7 +21,7 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 | Crate | Purpose |
 |-------|---------|
 | `lattix` | **Primary crate** (preferred import); minimal by default, opt-in features for algorithms/formats |
-| `lattix-core` | Internal implementation crate (used by `lattix`); not the recommended direct dependency |
+| `lattix-core` | Implementation crate used by `lattix`; **not** intended as a direct dependency |
 
 ## Why this exists
 

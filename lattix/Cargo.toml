@@ -5,10 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-repository.workspace = true
+repository = "https://github.com/arclabs561/lattix"
+homepage = "https://github.com/arclabs561/lattix"
 description = "Knowledge graph substrate: core types + basic algorithms + formats"
 publish = true
 documentation = "https://docs.rs/lattix"
+readme = "README.md"
+keywords = ["knowledge-graph", "graph", "rdf", "pagerank"]
+categories = ["data-structures", "algorithms"]
 
 [dependencies]
 lattix-core = { path = "../core/lattix-core" }

@@ -8,6 +8,11 @@ authors = ["Arc <attobop@gmail.com>"]
 description = "Graph/KG substrate: triples + PageRank + random walks"
 repository = "https://github.com/arclabs561/lattix"
 documentation = "https://docs.rs/lattix-core"
+readme = "README.md"
+# `lattix-core` is an implementation crate. Prefer `lattix` as the public dependency.
+publish = false
+keywords = ["knowledge-graph", "graph", "rdf", "pagerank"]
+categories = ["data-structures", "algorithms"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
