@@ -32,7 +32,11 @@ pub struct GraphNode {
 impl GraphNode {
     /// Create a new graph node.
     #[must_use]
-    pub fn new(id: impl Into<String>, node_type: impl Into<String>, name: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        node_type: impl Into<String>,
+        name: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             node_type: node_type.into(),
@@ -43,7 +47,11 @@ impl GraphNode {
 
     /// Add a property to the node.
     #[must_use]
-    pub fn with_property(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_property(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.properties.insert(key.into(), value.into());
         self
     }
@@ -81,7 +89,11 @@ pub struct GraphEdge {
 impl GraphEdge {
     /// Create a new graph edge.
     #[must_use]
-    pub fn new(source: impl Into<String>, target: impl Into<String>, relation: impl Into<String>) -> Self {
+    pub fn new(
+        source: impl Into<String>,
+        target: impl Into<String>,
+        relation: impl Into<String>,
+    ) -> Self {
         Self {
             source: source.into(),
             target: target.into(),
@@ -100,7 +112,11 @@ impl GraphEdge {
 
     /// Add a property to the edge.
     #[must_use]
-    pub fn with_property(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_property(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.properties.insert(key.into(), value.into());
         self
     }
@@ -133,7 +149,11 @@ impl GraphDocument {
 
     /// Add metadata to the graph document.
     #[must_use]
-    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_metadata(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
@@ -434,7 +454,13 @@ fn escape_cypher_string(s: &str) -> String {
 /// Sanitize names for Cypher identifiers.
 fn sanitize_cypher_name(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -467,7 +493,9 @@ mod tests {
         let alice = kg.get_entity(&EntityId::new("a")).unwrap();
         assert_eq!(alice.label.as_deref(), Some("Alice"));
         assert_eq!(alice.entity_type.as_deref(), Some("Person"));
-        assert_eq!(alice.properties.get("age").unwrap(), &serde_json::Value::from(30));
+        assert_eq!(
+            alice.properties.get("age").unwrap(),
+            &serde_json::Value::from(30)
+        );
     }
 }
-

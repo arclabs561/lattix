@@ -49,8 +49,8 @@
 
 // Re-export core types
 pub use lattix_core::{
-    EdgeStore, EdgeType, Entity, EntityId, Error, HeteroGraph, HeteroGraphStats, KnowledgeGraph,
-    GraphDocument, GraphEdge, GraphExportFormat, GraphNode, KnowledgeGraphStats, NodeStore,
+    EdgeStore, EdgeType, Entity, EntityId, Error, GraphDocument, GraphEdge, GraphExportFormat,
+    GraphNode, HeteroGraph, HeteroGraphStats, KnowledgeGraph, KnowledgeGraphStats, NodeStore,
     NodeType, Relation, RelationType, Result, Triple,
 };
 

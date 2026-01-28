@@ -20,8 +20,22 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 
 | Crate | Purpose |
 |-------|---------|
-| `lattix` | Minimal facade crate (preferred import); **minimal by default** |
-| `lattix-core` | Core implementation: storage, PageRank, random walks, formats |
+| `lattix` | **Primary crate** (preferred import); minimal by default, opt-in features for algorithms/formats |
+| `lattix-core` | Internal implementation crate (used by `lattix`); not the recommended direct dependency |
+
+## Why this exists
+
+`lattix` is meant to be the small, stable layer you can build higher-level systems on:
+
+- **Substrate-first**: triples + graph storage + a few basic algorithms (PageRank, random walks) with predictable behavior.
+- **Format boundaries**: parsing/serialization as opt-in features so dependents can stay lean.
+- **Interop**: designed to be a dependency of higher-level KG/graph learning systems (see `webs/*`).
+
+## Best starting points
+
+- **Core types**: `KnowledgeGraph`, `Triple`
+- **Basic traversal**: `KnowledgeGraph::find_path`
+- **When you want ML / training / temporal systems**: start in `webs/*` (not here)
 
 ## Embedding Backends
 

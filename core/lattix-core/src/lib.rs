@@ -19,6 +19,9 @@
 
 //! Core types for knowledge graphs.
 //!
+//! Prefer using the `lattix` crate unless you specifically need this crate directly.
+//! `lattix-core` is an implementation crate that `lattix` re-exports behind a smaller surface.
+//!
 //! This crate provides foundational types for working with knowledge graphs:
 //!
 //! - [`Triple`] - A (subject, predicate, object) triple
@@ -189,9 +192,9 @@
 //! ```
 
 pub mod algo;
-pub mod exchange;
 mod entity;
 mod error;
+pub mod exchange;
 pub mod formats;
 mod graph;
 pub mod hetero;
@@ -203,8 +206,8 @@ mod triple;
 mod sophia_impl;
 
 pub use entity::{Entity, EntityId};
-pub use exchange::{GraphDocument, GraphEdge, GraphExportFormat, GraphNode};
 pub use error::{Error, Result};
+pub use exchange::{GraphDocument, GraphEdge, GraphExportFormat, GraphNode};
 pub use graph::{KnowledgeGraph, KnowledgeGraphStats};
 pub use hetero::{EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType};
 pub use hyper::{HyperEdge, HyperGraph, HyperTriple, RoleBinding};

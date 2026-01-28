@@ -5,8 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
 description = "Knowledge graph substrate: core types + basic algorithms + formats"
 publish = true
+documentation = "https://docs.rs/lattix"
 
 [dependencies]
 lattix-core = { path = "../core/lattix-core" }
