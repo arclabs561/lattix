@@ -15,7 +15,7 @@ keywords = ["knowledge-graph", "graph", "rdf", "pagerank"]
 categories = ["data-structures", "algorithms"]
 
 [dependencies]
-lattix-core = { path = "../core/lattix-core" }
+lattix-core = { path = "../core/lattix-core", version = "0.1.1" }
 
 [features]
 # Minimal by default: dependents opt into formats/algorithms explicitly.
