@@ -1,4 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+#![allow(missing_docs)]
+
+use std::hint::black_box;
+
+use criterion::{criterion_group, criterion_main, Criterion};
 use lattix_core::algo::random_walk::{generate_walks, RandomWalkConfig};
 use lattix_core::{KnowledgeGraph, Triple};
 

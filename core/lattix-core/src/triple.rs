@@ -162,9 +162,8 @@ impl Triple {
             }
         }
         fn render_object(s: &str) -> String {
-            if s.starts_with('"') || s.starts_with("_:") {
-                s.to_string()
-            } else if s.starts_with('<') && s.ends_with('>') {
+            if s.starts_with('"') || s.starts_with("_:") || (s.starts_with('<') && s.ends_with('>'))
+            {
                 s.to_string()
             } else {
                 format!("<{}>", s)

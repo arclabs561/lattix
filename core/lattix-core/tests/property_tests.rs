@@ -63,7 +63,7 @@ mod triple_props {
 
             let actual = triple.confidence.unwrap();
             prop_assert!(
-                actual >= 0.0 && actual <= 1.0,
+                (0.0..=1.0).contains(&actual),
                 "Confidence {} not in [0,1], input was {}",
                 actual, confidence
             );

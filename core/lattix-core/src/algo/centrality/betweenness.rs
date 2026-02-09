@@ -261,7 +261,7 @@ mod tests {
         // In a directed star, Hub has no betweenness (it's the source, not bridge)
         // No paths go through Hub since all edges originate from Hub
         // A, B, C are leaf nodes with no betweenness either
-        for (_name, score) in &scores {
+        for score in scores.values() {
             assert_eq!(
                 *score, 0.0,
                 "Star nodes have no betweenness in directed graph"
