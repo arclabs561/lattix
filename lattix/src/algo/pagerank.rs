@@ -3,38 +3,9 @@
 //! Computes the importance of nodes based on link structure.
 //! Higher scores indicate more "important" nodes.
 //!
-//! # The Random Surfer Model
-//!
-//! Imagine a user clicking links randomly. PageRank(v) = probability
-//! the surfer is at node v after infinite random clicks.
-//!
-//! ```text
-//! PR(v) = (1-d)/N + d × Σᵤ PR(u)/L(u)
-//! ```
-//!
-//! Where:
-//! - d = damping factor (0.85)
-//! - N = total nodes
-//! - L(u) = outgoing links from u
-//!
-//! # Why Damping Factor?
-//!
-//! Without damping, rank accumulates in "sinks" (nodes with no outlinks).
-//! The damping factor models "teleportation": with probability 1-d (15%),
-//! the surfer jumps to a random page instead of following a link.
-//!
-//! This ensures convergence to a unique solution regardless of graph structure.
-//!
-//! # Mathematical Foundation
-//!
-//! PageRank is the **dominant left eigenvector** of a modified adjacency matrix.
-//! The power iteration algorithm computes this eigenvector iteratively:
-//!
-//! 1. Initialize: PR(v) = 1/N for all v
-//! 2. Update: PR(v) = (1-d)/N + d × Σᵤ PR(u)/L(u)
-//! 3. Repeat until ||PR_new - PR_old|| < tolerance
-//!
-//! Convergence rate depends on d but NOT on graph size—scales to billions of nodes.
+//! The core power-iteration algorithm is provided by [`graphops`];
+//! this module wraps it with a `KnowledgeGraph`-specific API that maps
+//! petgraph node indices back to entity IDs.
 
 use crate::KnowledgeGraph;
 use std::collections::HashMap;
@@ -65,11 +36,9 @@ impl Default for PageRankConfig {
 ///
 /// Returns a map of `EntityId` -> Score, where scores sum to 1.0.
 ///
-/// # Algorithm
-/// Uses the power iteration method with proper handling of dangling nodes
-/// (nodes with no outgoing edges). Dangling mass is redistributed uniformly.
+/// Delegates to [`graphops::pagerank::pagerank`] for the core iteration
+/// and maps petgraph node indices back to entity IDs.
 #[must_use]
-#[allow(clippy::cast_precision_loss)] // node counts won't exceed f64 precision
 pub fn pagerank(kg: &KnowledgeGraph, config: PageRankConfig) -> HashMap<String, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
@@ -77,60 +46,13 @@ pub fn pagerank(kg: &KnowledgeGraph, config: PageRankConfig) -> HashMap<String, 
         return HashMap::new();
     }
 
-    let n_f64 = n as f64;
-    let d = config.damping_factor;
-    let teleport = (1.0 - d) / n_f64;
+    let gp_config = graphops::pagerank::PageRankConfig {
+        damping: config.damping_factor,
+        max_iterations: config.max_iterations,
+        tolerance: config.tolerance,
+    };
 
-    // Initialize scores uniformly
-    let mut scores = vec![1.0 / n_f64; n];
-    let mut new_scores = vec![0.0; n];
-
-    // Pre-compute out-degrees and identify dangling nodes
-    let out_degrees: Vec<usize> = graph
-        .node_indices()
-        .map(|idx| graph.neighbors(idx).count())
-        .collect();
-
-    for _iter in 0..config.max_iterations {
-        // Step 1: Compute dangling mass (sum of scores of nodes with no outlinks)
-        let dangling_sum: f64 = out_degrees
-            .iter()
-            .enumerate()
-            .filter(|(_, &deg)| deg == 0)
-            .map(|(i, _)| scores[i])
-            .sum();
-
-        // Dangling contribution spread uniformly
-        let dangling_contrib = d * dangling_sum / n_f64;
-
-        // Step 2: Initialize new scores with teleport + dangling
-        new_scores.fill(teleport + dangling_contrib);
-
-        // Step 3: Distribute link mass
-        for u_idx in graph.node_indices() {
-            let u = u_idx.index();
-            let deg = out_degrees[u];
-            if deg > 0 {
-                let share = d * scores[u] / deg as f64;
-                for v_idx in graph.neighbors(u_idx) {
-                    new_scores[v_idx.index()] += share;
-                }
-            }
-        }
-
-        // Step 4: Check convergence (L1 norm)
-        let diff: f64 = scores
-            .iter()
-            .zip(new_scores.iter())
-            .map(|(old, new)| (old - new).abs())
-            .sum();
-
-        std::mem::swap(&mut scores, &mut new_scores);
-
-        if diff < config.tolerance {
-            break;
-        }
-    }
+    let scores = graphops::pagerank::pagerank(graph, gp_config);
 
     // Map indices back to entity IDs
     let mut result = HashMap::with_capacity(n);
