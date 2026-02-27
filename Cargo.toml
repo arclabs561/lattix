@@ -1,12 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-  "core/lattix-core",
   "lattix",
 ]
 
 [workspace.package]
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.82"
 license = "MIT OR Apache-2.0"
@@ -25,4 +24,3 @@ suspicious = { level = "warn", priority = -1 }
 complexity = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
 restriction = { level = "allow", priority = -1 }
-

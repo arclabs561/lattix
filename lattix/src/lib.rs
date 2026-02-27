@@ -1,77 +1,218 @@
-//! Knowledge graph substrate: core types + basic algorithms + formats.
+// Allow minor clippy style warnings at crate level
+// These are mostly style preferences, not bugs
+#![allow(unused_results)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::derive_partial_eq_without_eq)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::option_if_let_else)]
+#![allow(clippy::should_implement_trait)]
+#![allow(clippy::missing_const_for_fn)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::unwrap_or_default)]
+#![allow(clippy::match_single_binding)]
+#![allow(clippy::manual_strip)]
+#![allow(clippy::items_after_statements)]
+
+//! Knowledge graph substrate: core types, algorithms, and formats.
 //!
-//! This crate is intentionally *minimal*: it re-exports `lattix-core` and nothing higher-level.
-//! Higher-level KG systems (training, reasoning, temporal systems, CLI) live in `webs/*`.
+//! This crate provides foundational types for working with knowledge graphs:
+//!
+//! - [`Triple`] - A (subject, predicate, object) triple
+//! - [`Entity`] - A node in the knowledge graph
+//! - [`Relation`] - An edge type in the knowledge graph
+//! - [`KnowledgeGraph`] - A homogeneous graph structure built from triples
+//! - [`HeteroGraph`] - A heterogeneous graph with typed nodes and edges
+//!
+//! # Historical Context: From Databases to Graphs
+//!
+//! | Era | Representation | Example | Limitation |
+//! |-----|----------------|---------|------------|
+//! | 1970s | Relational | SQL tables | Fixed schema, join-heavy |
+//! | 2001 | RDF | Semantic Web | XML verbosity, query complexity |
+//! | 2012 | Property Graphs | Neo4j | No standard query language |
+//! | 2019 | GNN-ready graphs | PyG, DGL | Framework-specific formats |
+//!
+//! Knowledge graphs became essential when search engines realized that
+//! "things, not strings" (Google, 2012) captures real-world semantics
+//! that keyword matching misses.
+//!
+//! # The Triple: Atomic Unit of Knowledge
+//!
+//! All knowledge graph formalisms reduce to the **triple**:
+//!
+//! ```text
+//! (subject, predicate, object)
+//! (Albert Einstein, born_in, Ulm)
+//! (Ulm, located_in, Germany)
+//! ```
+//!
+//! This simple structure enables:
+//! - **Inference**: If A → B → C, deduce A → C
+//! - **Composition**: Merge graphs by merging shared entities
+//! - **Embedding**: Represent triples as vectors for ML
+//!
+//! # Beyond Triples: N-ary Relations and Hypergraphs
+//!
+//! Triples are limited - they can only express binary relations. Real-world
+//! facts often involve more than two entities:
+//!
+//! ```text
+//! (Einstein, won, Nobel Prize, Physics, 1921)  -- 4 entities!
+//! (Alice, purchased, Book, $20, Amazon, 2024-01-15)  -- 6 entities!
+//! ```
+//!
+//! Three approaches handle this:
+//!
+//! | Approach | Structure | Example | Trade-off |
+//! |----------|-----------|---------|-----------|
+//! | **Reification** | Break into multiple triples | Creates artificial nodes | Information loss |
+//! | **Qualifiers** | Triple + key-value pairs | Wikidata model | Complex querying |
+//! | **Hyperedges** | N-ary relation directly | Native structure | New embeddings needed |
+//!
+//! ## Reification (Workaround)
+//!
+//! Convert n-ary facts to binary by introducing intermediate nodes:
+//!
+//! ```text
+//! Original: (Einstein, won, Nobel, Physics, 1921)
+//! Reified:  (Award_1, recipient, Einstein)
+//!           (Award_1, prize, Nobel)
+//!           (Award_1, field, Physics)
+//!           (Award_1, year, 1921)
+//! ```
+//!
+//! **Problem**: Loses the atomic nature of the fact. Embedding models struggle
+//! because Award_1 is artificial - it has no semantic meaning.
+//!
+//! ## Hyper-relational KGs (Wikidata Style)
+//!
+//! Attach qualifiers to triples:
+//!
+//! ```text
+//! (Einstein, won, Nobel Prize)
+//!   qualifiers: {field: Physics, year: 1921}
+//! ```
+//!
+//! Implemented in [`hyper::HyperTriple`]. Embeddings: StarE, HINGE.
+//!
+//! ## Knowledge Hypergraphs (Native N-ary)
+//!
+//! Represent facts as hyperedges connecting multiple entities with roles:
+//!
+//! ```text
+//! HyperEdge {
+//!   relation: "award_ceremony",
+//!   bindings: {
+//!     recipient: Einstein,
+//!     prize: Nobel,
+//!     field: Physics,
+//!     year: 1921
+//!   }
+//! }
+//! ```
+//!
+//! Implemented in [`hyper::HyperEdge`]. Embeddings: HSimplE, HypE, HyCubE.
+//!
+//! **Key insight**: Position-aware or role-aware encoding is essential.
+//! The relation "recipient" carries different semantics than "year".
+//!
+//! See [`hyper`] module for hypergraph types.
+//!
+//! # Homogeneous vs Heterogeneous Graphs
+//!
+//! | Type | Nodes | Edges | Use Case |
+//! |------|-------|-------|----------|
+//! | Homogeneous | One type | One type | Citation networks, social graphs |
+//! | Heterogeneous | Multiple types | Multiple types | Knowledge graphs, biomedical |
+//!
+//! [`HeteroGraph`] supports typed nodes and edges, essential for:
+//! - **RGCN**: Relation-specific weight matrices
+//! - **HGT**: Heterogeneous graph transformers
+//! - **Link prediction**: Typed edge prediction
+//!
+//! # Serialization Formats
+//!
+//! Supports modern RDF 1.2 specifications (2024):
+//! - N-Triples - Line-based, simple (fastest parsing)
+//! - N-Quads - N-Triples with named graphs
+//! - Turtle - Human-readable (best for debugging)
+//! - JSON-LD - Linked data (web integration)
+//!
+//! # Algorithms
+//!
+//! ## Centrality ([`algo::centrality`])
+//!
+//! | Algorithm | Question | Module |
+//! |-----------|----------|--------|
+//! | Degree | How many connections? | [`algo::centrality::degree_centrality`] |
+//! | Betweenness | Bridge between communities? | [`algo::centrality::betweenness_centrality`] |
+//! | Closeness | How close to everyone? | [`algo::centrality::closeness_centrality`] |
+//! | Eigenvector | Connected to important nodes? | [`algo::centrality::eigenvector_centrality`] |
+//! | Katz | Reachable via damped paths? | [`algo::centrality::katz_centrality`] |
+//! | PageRank | Random walk equilibrium? | [`algo::pagerank::pagerank`] |
+//! | HITS | Hub or authority? | [`algo::centrality::hits`] |
+//!
+//! ## Other Algorithms
+//!
+//! - [`algo::random_walk`] - Node2Vec style random walks (biased BFS/DFS)
+//! - [`algo::components`] - Connected components (graph structure)
+//! - [`algo::sampling`] - Neighbor sampling for mini-batch GNN training
+//!
+//! # When to Use Which Structure
+//!
+//! | Task | Structure | Why |
+//! |------|-----------|-----|
+//! | Node classification | KnowledgeGraph | Homogeneous GCN/GAT |
+//! | Link prediction | HeteroGraph | Relation types matter |
+//! | Knowledge completion | HeteroGraph + embeddings | TransE, RotatE, BoxE |
+//! | Graph classification | KnowledgeGraph | Global pooling over nodes |
 //!
 //! # Example
 //!
 //! ```rust
-//! use lattix::{KnowledgeGraph, Triple};
+//! use lattix::{Triple, KnowledgeGraph};
 //!
-//! // Build a knowledge graph
 //! let mut kg = KnowledgeGraph::new();
+//!
+//! // Add triples
 //! kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
 //! kg.add_triple(Triple::new("Apple", "headquartered_in", "Cupertino"));
+//! kg.add_triple(Triple::new("Steve Jobs", "born_in", "San Francisco"));
 //!
 //! // Query
-//! let founders = kg.relations_from("Apple");
-//! println!("Apple has {} relations", founders.len());
-//!
-//! // Statistics
-//! let stats = kg.stats();
-//! println!("Entities: {}, Triples: {}", stats.entity_count, stats.triple_count);
-//! ```
-//!
-//! # Integration with anno
-//!
-//! Import knowledge graphs from anno's N-Triples export:
-//!
-//! ```rust,ignore
-//! // First, export from anno:
-//! // anno export -i docs/ -o kg/ --format ntriples
-//!
-//! use lattix::KnowledgeGraph;
-//!
-//! // Load single file
-//! let kg = KnowledgeGraph::from_ntriples_file("kg/document.nt")?;
-//!
-//! // Or load entire directory of .nt files
-//! let kg = lattix::load_anno_exports("kg/")?;
-//!
-//! // Run PageRank on extracted entities
-//! use lattix::algo::pagerank::{pagerank, PageRankConfig};
-//! let scores = pagerank(&kg, PageRankConfig::default());
-//!
-//! // Generate random walks for node embedding training
-//! use lattix::algo::random_walk::{generate_walks, RandomWalkConfig};
-//! let walks = generate_walks(&kg, RandomWalkConfig::default());
+//! let apple_relations = kg.relations_from("Apple");
+//! assert_eq!(apple_relations.len(), 2);
 //! ```
 
-// Re-export core types
-pub use lattix_core::{
-    EdgeStore, EdgeType, Entity, EntityId, Error, GraphDocument, GraphEdge, GraphExportFormat,
-    GraphNode, HeteroGraph, HeteroGraphStats, KnowledgeGraph, KnowledgeGraphStats, NodeStore,
-    NodeType, Relation, RelationType, Result, Triple,
-};
+pub mod algo;
+mod entity;
+mod error;
+pub mod exchange;
+pub mod formats;
+mod graph;
+pub mod hetero;
+pub mod hyper;
+mod relation;
+mod triple;
 
-/// Back-compat aliases (older code used these names).
-pub use Error as CoreError;
-pub use Result as CoreResult;
+#[cfg(feature = "sophia")]
+mod sophia_impl;
+
+pub use entity::{Entity, EntityId};
+pub use error::{Error, Result};
+pub use exchange::{GraphDocument, GraphEdge, GraphExportFormat, GraphNode};
+pub use graph::{KnowledgeGraph, KnowledgeGraphStats};
+pub use hetero::{EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType};
+pub use hyper::{HyperEdge, HyperGraph, HyperTriple, RoleBinding};
+pub use relation::{Relation, RelationType};
+pub use triple::Triple;
 
 // Re-export petgraph for advanced graph operations
-pub use lattix_core::petgraph;
-
-/// RDF serialization formats (RDF 1.2).
-pub mod formats {
-    pub use lattix_core::formats::*;
-}
-
-/// Graph algorithms: PageRank, random walks, connected components.
-pub mod algo {
-    pub use lattix_core::algo::*;
-}
-
-// NOTE: Higher-level modules intentionally do not live here.
+pub use petgraph;
 
 /// Load all N-Triples files from a directory (e.g., anno export directory).
 ///
@@ -83,7 +224,7 @@ pub mod algo {
 /// // After: anno export -i docs/ -o kg/ --format ntriples
 /// let kg = lattix::load_anno_exports("kg/")?;
 /// ```
-pub fn load_anno_exports(dir: impl AsRef<std::path::Path>) -> CoreResult<KnowledgeGraph> {
+pub fn load_anno_exports(dir: impl AsRef<std::path::Path>) -> Result<KnowledgeGraph> {
     use std::fs;
 
     let dir = dir.as_ref();
@@ -95,7 +236,6 @@ pub fn load_anno_exports(dir: impl AsRef<std::path::Path>) -> CoreResult<Knowled
         let path = entry.path();
         if path.extension().is_some_and(|e| e == "nt") {
             let file_kg = KnowledgeGraph::from_ntriples_file(&path)?;
-            // Merge triples
             for triple in file_kg.triples() {
                 kg.add_triple(triple.clone());
             }
