@@ -39,9 +39,9 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 
 ## Embedding Backends
 
-These backends and training/inference systems live in `webs/*` (L5). `lattix` stays substrate-only.
+These backends and training/inference systems live in separate crates. `lattix` stays substrate-only.
 
 ## Relationship to `webs`
 
 `webs/*` is the home for higher-level KG systems (reasoning, training/inference, temporal systems, CLI).
-It depends on this repo’s L3 substrate (`lattix` / `lattix-core`).
+It depends on this repo’s substrate (`lattix`).
