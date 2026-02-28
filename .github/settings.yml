@@ -1,0 +1,21 @@
+# Managed by repository-settings/app
+# https://github.com/repository-settings/app
+
+repository:
+  description: "Knowledge graph substrate: core types + basic algorithms + formats"
+  homepage: "https://docs.rs/lattix"
+  private: false
+  has_issues: true
+  has_wiki: false
+  has_downloads: true
+  default_branch: main
+  allow_squash_merge: true
+  allow_merge_commit: true
+  allow_rebase_merge: true
+  delete_branch_on_merge: true
+
+  topics:
+    - knowledge-graph
+    - rdf
+    - pagerank
+    - rust
