@@ -9,10 +9,36 @@ use serde_json::{json, Value};
 use std::io::Write;
 
 /// JSON-LD format handler.
+///
+/// Serializes a [`KnowledgeGraph`] to JSON-LD `@graph` documents and
+/// parses them back. Uses `serde_json` for JSON I/O. The parser handles
+/// the `@graph` array format; full JSON-LD expansion/compaction is not
+/// implemented.
 pub struct JsonLd;
 
 impl JsonLd {
     /// Write knowledge graph to JSON-LD format.
+    ///
+    /// Produces a `{"@context": {...}, "@graph": [...]}` document with
+    /// nodes grouped by subject.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::{KnowledgeGraph, Triple, formats::JsonLd};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new(
+    ///     "http://example.org/Alice",
+    ///     "http://example.org/knows",
+    ///     "http://example.org/Bob",
+    /// ));
+    /// let json = JsonLd::to_string(&kg)?;
+    /// assert!(json.contains("@graph"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write<W: Write>(kg: &KnowledgeGraph, mut writer: W) -> Result<()> {
         let doc = Self::to_value(kg);
         let json = serde_json::to_string_pretty(&doc)?;
@@ -84,10 +110,30 @@ impl JsonLd {
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
 
-    /// Parse JSON-LD to knowledge graph (basic implementation).
+    /// Parse a JSON-LD [`Value`] into a knowledge graph.
     ///
-    /// Note: Full JSON-LD parsing requires expansion/compaction algorithms.
-    /// This is a simplified parser that handles the @graph format.
+    /// Handles `{"@graph": [...]}` documents and single-node documents
+    /// with an `@id` field. Does not perform full JSON-LD expansion or
+    /// compaction.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::formats::JsonLd;
+    /// use serde_json::json;
+    ///
+    /// let doc = json!({
+    ///     "@graph": [{
+    ///         "@id": "http://example.org/Alice",
+    ///         "http://example.org/knows": { "@id": "http://example.org/Bob" }
+    ///     }]
+    /// });
+    /// let kg = JsonLd::from_value(&doc)?;
+    /// assert_eq!(kg.triple_count(), 1);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn from_value(doc: &Value) -> Result<KnowledgeGraph> {
         let mut kg = KnowledgeGraph::new();
 

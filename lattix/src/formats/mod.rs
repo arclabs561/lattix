@@ -1,12 +1,17 @@
 //! RDF serialization formats.
 //!
-//! Supports modern RDF 1.2 specifications (2024):
-//! - N-Triples (line-based, simple)
-//! - N-Quads (N-Triples with named graphs)
-//! - Turtle (human-readable)
-//! - JSON-LD (linked data)
+//! Provides read/write support for common RDF and tabular formats,
+//! backed by [`oxttl`](https://docs.rs/oxttl) for N-Triples and Turtle parsing.
 //!
-//! Note: RDF 1.2 introduces triple terms (quoted triples) for reification.
+//! | Format | Read | Write | Backend |
+//! |--------|------|-------|---------|
+//! | N-Triples | yes | yes | oxttl |
+//! | N-Quads | yes | yes | hand-rolled |
+//! | Turtle | yes | yes | oxttl |
+//! | JSON-LD | yes | yes | serde_json |
+//! | CSV | yes | -- | csv crate |
+//!
+//! RDF 1.2 introduces triple terms (quoted triples) for reification.
 //! This is tracked but not yet fully implemented.
 
 pub mod csv;

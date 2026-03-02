@@ -28,10 +28,28 @@ fn to_nt_object(s: &str) -> String {
 }
 
 /// N-Triples format handler.
+///
+/// Reads and writes the line-based N-Triples RDF serialization.
+/// Each line encodes one triple as `<subject> <predicate> <object> .`
+///
+/// Parsing uses [`oxttl::NTriplesParser`] under the hood.
 pub struct NTriples;
 
 impl NTriples {
     /// Parse N-Triples from a reader.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::formats::NTriples;
+    ///
+    /// let input = "<http://ex.org/A> <http://ex.org/knows> <http://ex.org/B> .\n";
+    /// let kg = NTriples::read(std::io::Cursor::new(input))?;
+    /// assert_eq!(kg.triple_count(), 1);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read<R: Read>(reader: R) -> Result<KnowledgeGraph> {
         let mut kg = KnowledgeGraph::new();
 
@@ -51,8 +69,24 @@ impl NTriples {
 
     /// Write knowledge graph to N-Triples format.
     ///
-    /// Returns an error if any triple cannot be converted to valid RDF terms
-    /// (e.g., a literal in subject position).
+    /// Each triple is written as one line: `<s> <p> <o> .`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::{KnowledgeGraph, Triple, formats::NTriples};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new("http://ex.org/A", "http://ex.org/knows", "http://ex.org/B"));
+    ///
+    /// let mut buf = Vec::new();
+    /// NTriples::write(&kg, &mut buf)?;
+    /// let output = String::from_utf8(buf).unwrap();
+    /// assert!(output.contains("<http://ex.org/A>"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write<W: Write>(kg: &KnowledgeGraph, mut writer: W) -> Result<()> {
         for triple in kg.triples() {
             let s = to_nt_subject(triple.subject.as_str());

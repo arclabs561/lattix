@@ -11,10 +11,32 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 
 /// Turtle format handler.
+///
+/// Reads Turtle syntax (with prefix declarations and base IRIs) via
+/// [`oxttl::TurtleParser`]. Writing produces N-Triples-compatible output
+/// grouped by subject -- no prefix compression on output.
 pub struct Turtle;
 
 impl Turtle {
     /// Parse Turtle from a reader.
+    ///
+    /// `base_iri` is optional; when provided it resolves relative IRIs.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::formats::Turtle;
+    ///
+    /// let ttl = r#"
+    /// @prefix ex: <http://example.org/> .
+    /// ex:Alice ex:knows ex:Bob .
+    /// "#;
+    /// let kg = Turtle::read(std::io::Cursor::new(ttl), None)?;
+    /// assert_eq!(kg.triple_count(), 1);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read<R: Read>(reader: R, base_iri: Option<&str>) -> Result<KnowledgeGraph> {
         let mut parser = TurtleParser::new();
         if let Some(base) = base_iri {
@@ -41,8 +63,27 @@ impl Turtle {
 
     /// Write knowledge graph to Turtle format.
     ///
-    /// Outputs N-Triples-compatible syntax (no prefix compression).
-    /// For prefix-compressed output, use a dedicated Turtle serializer.
+    /// Outputs N-Triples-compatible syntax grouped by subject (no prefix
+    /// compression). Multiple predicates for the same subject are joined
+    /// with `;`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::{KnowledgeGraph, Triple, formats::Turtle};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new(
+    ///     "http://example.org/Alice",
+    ///     "http://example.org/knows",
+    ///     "http://example.org/Bob",
+    /// ));
+    /// let output = Turtle::to_string(&kg)?;
+    /// assert!(output.contains("Alice"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write<W: Write>(
         kg: &KnowledgeGraph,
         mut writer: W,

@@ -10,6 +10,11 @@ use crate::{KnowledgeGraph, Result, Triple};
 use std::io::Read;
 
 /// CSV format handler.
+///
+/// Reads triples from headerless CSV. Three-column rows map to
+/// (subject, predicate, object); two-column rows use `"related_to"`
+/// as the default predicate. Rows with fewer than two columns are
+/// skipped.
 pub struct Csv;
 
 impl Csv {
@@ -18,6 +23,19 @@ impl Csv {
     /// - 3+ columns: columns 0, 1, 2 are subject, predicate, object.
     /// - 2 columns: subject, object (predicate = `"related_to"`).
     /// - <2 columns: row is skipped.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> lattix::Result<()> {
+    /// use lattix::formats::csv::Csv;
+    ///
+    /// let data = "Alice,knows,Bob\nBob,works_at,Acme\n";
+    /// let kg = Csv::read(data.as_bytes())?;
+    /// assert_eq!(kg.triple_count(), 2);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read<R: Read>(reader: R) -> Result<KnowledgeGraph> {
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
