@@ -408,6 +408,89 @@ mod stress_props {
     }
 }
 
+mod clear_props {
+    use super::*;
+
+    fn arb_entity_id() -> impl Strategy<Value = String> {
+        "[a-zA-Z][a-zA-Z0-9]{0,5}".prop_map(|s| s)
+    }
+
+    fn arb_relation() -> impl Strategy<Value = String> {
+        "[a-z]{1,4}".prop_map(|s| s)
+    }
+
+    prop_compose! {
+        fn arb_triple()(
+            subject in arb_entity_id(),
+            predicate in arb_relation(),
+            object in arb_entity_id(),
+        ) -> (String, String, String) {
+            (subject, predicate, object)
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// Clearing a graph must fully reset all state -- no residual data
+        /// in derived indexes (subject_index, object_index, relation_type_cache).
+        #[test]
+        fn clear_resets_all_state(
+            triples in prop::collection::vec(arb_triple(), 1..50),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+
+            let mut kg = KnowledgeGraph::new();
+            for (subject, predicate, object) in &triples {
+                kg.add_triple(Triple::new(subject.as_str(), predicate.as_str(), object.as_str()));
+            }
+
+            kg.clear();
+
+            prop_assert_eq!(kg.entity_count(), 0);
+            prop_assert_eq!(kg.triple_count(), 0);
+            prop_assert_eq!(kg.relation_type_count(), 0);
+
+            // Derived indexes must be empty too
+            for (subject, _, _) in &triples {
+                prop_assert!(
+                    kg.relations_from(subject.as_str()).is_empty(),
+                    "relations_from should be empty after clear"
+                );
+            }
+        }
+
+        /// Adding triples after clear should work identically to a fresh graph.
+        #[test]
+        fn add_after_clear_matches_fresh(
+            first_batch in prop::collection::vec(arb_triple(), 1..20),
+            second_batch in prop::collection::vec(arb_triple(), 1..20),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+
+            // Build, clear, re-add
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &first_batch {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+            kg.clear();
+            for (s, p, o) in &second_batch {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            // Fresh graph with only second batch
+            let mut fresh = KnowledgeGraph::new();
+            for (s, p, o) in &second_batch {
+                fresh.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            prop_assert_eq!(kg.entity_count(), fresh.entity_count());
+            prop_assert_eq!(kg.triple_count(), fresh.triple_count());
+            prop_assert_eq!(kg.relation_type_count(), fresh.relation_type_count());
+        }
+    }
+}
+
 mod invariant_props {
     use super::*;
 
