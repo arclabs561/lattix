@@ -5,37 +5,10 @@
 //!
 //! Reference: <https://www.w3.org/TR/rdf12-n-triples/>
 
+use super::oxrdf_helpers::{subject_to_string, term_to_string};
 use crate::{KnowledgeGraph, Result, Triple};
 use oxttl::NTriplesParser;
 use std::io::{Read, Write};
-
-/// Convert an oxrdf subject to a lattix string.
-fn subject_to_string(s: &oxrdf::NamedOrBlankNode) -> String {
-    match s {
-        oxrdf::NamedOrBlankNode::NamedNode(n) => n.as_str().to_string(),
-        oxrdf::NamedOrBlankNode::BlankNode(b) => format!("_:{}", b.as_str()),
-    }
-}
-
-/// Convert an oxrdf term to a lattix string.
-fn term_to_string(t: &oxrdf::Term) -> String {
-    match t {
-        oxrdf::Term::NamedNode(n) => n.as_str().to_string(),
-        oxrdf::Term::BlankNode(b) => format!("_:{}", b.as_str()),
-        oxrdf::Term::Literal(l) => {
-            if let Some(lang) = l.language() {
-                format!("\"{}\"@{}", l.value(), lang)
-            } else {
-                let dt = l.datatype().as_str();
-                if dt == "http://www.w3.org/2001/XMLSchema#string" {
-                    format!("\"{}\"", l.value())
-                } else {
-                    format!("\"{}\"^^<{}>", l.value(), dt)
-                }
-            }
-        }
-    }
-}
 
 /// Convert a lattix string to N-Triples term syntax for serialization.
 fn to_nt_subject(s: &str) -> String {
