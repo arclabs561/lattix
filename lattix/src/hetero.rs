@@ -95,13 +95,20 @@ pub type TypedNodeIndex = usize;
 /// Edge storage for a specific edge type (COO format).
 ///
 /// Stores edges as (source_idx, target_idx) pairs where indices
-/// are local to their respective node types.
+/// are local to their respective node types. Also maintains forward
+/// and reverse adjacency indexes for O(1) neighbor lookups.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EdgeStore {
     /// Source node indices (local to src_type).
     pub src: Vec<TypedNodeIndex>,
     /// Target node indices (local to dst_type).
     pub dst: Vec<TypedNodeIndex>,
+    /// Forward adjacency: src -> list of dst indices.
+    #[serde(skip)]
+    fwd_adj: HashMap<TypedNodeIndex, Vec<TypedNodeIndex>>,
+    /// Reverse adjacency: dst -> list of src indices.
+    #[serde(skip)]
+    rev_adj: HashMap<TypedNodeIndex, Vec<TypedNodeIndex>>,
 }
 
 impl EdgeStore {
@@ -113,7 +120,14 @@ impl EdgeStore {
     /// Create from edge index vectors.
     pub fn from_edges(src: Vec<TypedNodeIndex>, dst: Vec<TypedNodeIndex>) -> Self {
         debug_assert_eq!(src.len(), dst.len());
-        Self { src, dst }
+        let mut store = Self {
+            src,
+            dst,
+            fwd_adj: HashMap::new(),
+            rev_adj: HashMap::new(),
+        };
+        store.rebuild_adj();
+        store
     }
 
     /// Number of edges.
@@ -125,11 +139,35 @@ impl EdgeStore {
     pub fn add_edge(&mut self, src: TypedNodeIndex, dst: TypedNodeIndex) {
         self.src.push(src);
         self.dst.push(dst);
+        self.fwd_adj.entry(src).or_default().push(dst);
+        self.rev_adj.entry(dst).or_default().push(src);
     }
 
     /// Iterate over (src, dst) pairs.
     pub fn iter(&self) -> impl Iterator<Item = (TypedNodeIndex, TypedNodeIndex)> + '_ {
         self.src.iter().copied().zip(self.dst.iter().copied())
+    }
+
+    /// Get forward neighbors of a source node.
+    pub fn neighbors(&self, src: TypedNodeIndex) -> &[TypedNodeIndex] {
+        self.fwd_adj.get(&src).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+
+    /// Get reverse neighbors (incoming) of a destination node.
+    pub fn incoming(&self, dst: TypedNodeIndex) -> &[TypedNodeIndex] {
+        self.rev_adj.get(&dst).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+
+    /// Rebuild adjacency indexes from COO data.
+    ///
+    /// Call after deserialization to restore the `#[serde(skip)]` indexes.
+    pub fn rebuild_adj(&mut self) {
+        self.fwd_adj.clear();
+        self.rev_adj.clear();
+        for (&s, &d) in self.src.iter().zip(self.dst.iter()) {
+            self.fwd_adj.entry(s).or_default().push(d);
+            self.rev_adj.entry(d).or_default().push(s);
+        }
     }
 }
 
@@ -312,20 +350,15 @@ impl HeteroGraph {
         self.node_stores.get(node_type)?.get_id(idx)
     }
 
-    /// Get neighbors of a node via a specific edge type.
+    /// Get neighbors of a node via a specific edge type (O(1) lookup).
     pub fn neighbors(&self, edge_type: &EdgeType, src_idx: TypedNodeIndex) -> Vec<TypedNodeIndex> {
         self.edge_stores
             .get(edge_type)
-            .map(|store| {
-                store
-                    .iter()
-                    .filter_map(|(s, d)| if s == src_idx { Some(d) } else { None })
-                    .collect()
-            })
+            .map(|store| store.neighbors(src_idx).to_vec())
             .unwrap_or_default()
     }
 
-    /// Get incoming neighbors (reverse direction).
+    /// Get incoming neighbors (reverse direction, O(1) lookup).
     pub fn incoming_neighbors(
         &self,
         edge_type: &EdgeType,
@@ -333,13 +366,53 @@ impl HeteroGraph {
     ) -> Vec<TypedNodeIndex> {
         self.edge_stores
             .get(edge_type)
-            .map(|store| {
-                store
-                    .iter()
-                    .filter_map(|(s, d)| if d == dst_idx { Some(s) } else { None })
-                    .collect()
-            })
+            .map(|store| store.incoming(dst_idx).to_vec())
             .unwrap_or_default()
+    }
+
+    /// Get neighbors by string IDs, returning destination node IDs.
+    pub fn neighbors_by_id<'a>(
+        &'a self,
+        edge_type: &EdgeType,
+        src_id: &str,
+    ) -> Vec<&'a str> {
+        let src_idx = match self.get_node_index(&edge_type.src_type, src_id) {
+            Some(idx) => idx,
+            None => return Vec::new(),
+        };
+        let dst_store = match self.node_stores.get(&edge_type.dst_type) {
+            Some(s) => s,
+            None => return Vec::new(),
+        };
+        self.neighbors(edge_type, src_idx)
+            .into_iter()
+            .filter_map(|idx| dst_store.get_id(idx))
+            .collect()
+    }
+
+    /// Out-degree: number of outgoing edges from a node for an edge type.
+    pub fn out_degree(&self, edge_type: &EdgeType, node_idx: TypedNodeIndex) -> usize {
+        self.edge_stores
+            .get(edge_type)
+            .map(|store| store.neighbors(node_idx).len())
+            .unwrap_or(0)
+    }
+
+    /// In-degree: number of incoming edges to a node for an edge type.
+    pub fn in_degree(&self, edge_type: &EdgeType, node_idx: TypedNodeIndex) -> usize {
+        self.edge_stores
+            .get(edge_type)
+            .map(|store| store.incoming(node_idx).len())
+            .unwrap_or(0)
+    }
+
+    /// Rebuild adjacency indexes for all edge stores.
+    ///
+    /// Call after deserialization to restore the `#[serde(skip)]` adjacency indexes.
+    pub fn rebuild_adjacency(&mut self) {
+        for store in self.edge_stores.values_mut() {
+            store.rebuild_adj();
+        }
     }
 
     /// Compute metapath-based neighbors.
@@ -409,6 +482,32 @@ impl HeteroGraph {
                 })
                 .collect(),
         }
+    }
+}
+
+impl HeteroGraph {
+    /// Convert to a homogeneous [`KnowledgeGraph`](crate::KnowledgeGraph).
+    ///
+    /// For each edge type, creates triples using the relation name as predicate,
+    /// looking up node IDs from their respective stores.
+    pub fn to_knowledge_graph(&self) -> crate::KnowledgeGraph {
+        let mut kg = crate::KnowledgeGraph::new();
+        for (edge_type, edge_store) in &self.edge_stores {
+            let src_store = match self.node_stores.get(&edge_type.src_type) {
+                Some(s) => s,
+                None => continue,
+            };
+            let dst_store = match self.node_stores.get(&edge_type.dst_type) {
+                Some(s) => s,
+                None => continue,
+            };
+            for (&s, &d) in edge_store.src.iter().zip(edge_store.dst.iter()) {
+                if let (Some(subj), Some(obj)) = (src_store.get_id(s), dst_store.get_id(d)) {
+                    kg.add_triple(crate::Triple::new(subj, &*edge_type.relation, obj));
+                }
+            }
+        }
+        kg
     }
 }
 
@@ -520,5 +619,118 @@ mod tests {
         assert_eq!(hg.num_edge_types(), 2); // "knows" and "works_at"
         assert_eq!(hg.total_nodes(), 3);
         assert_eq!(hg.total_edges(), 2);
+    }
+
+    #[test]
+    fn test_adjacency_index_neighbors() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&buys, "alice", "book2");
+        hg.add_edge(&buys, "bob", "book1");
+
+        let alice_idx = hg.get_node_index(&NodeType::new("user"), "alice").unwrap();
+        let bob_idx = hg.get_node_index(&NodeType::new("user"), "bob").unwrap();
+        let book1_idx = hg.get_node_index(&NodeType::new("item"), "book1").unwrap();
+
+        // Forward neighbors
+        let alice_neighbors = hg.neighbors(&buys, alice_idx);
+        assert_eq!(alice_neighbors.len(), 2);
+        let bob_neighbors = hg.neighbors(&buys, bob_idx);
+        assert_eq!(bob_neighbors.len(), 1);
+
+        // Incoming neighbors
+        let book1_incoming = hg.incoming_neighbors(&buys, book1_idx);
+        assert_eq!(book1_incoming.len(), 2);
+    }
+
+    #[test]
+    fn test_neighbors_by_id() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&buys, "alice", "book2");
+
+        let mut neighbors = hg.neighbors_by_id(&buys, "alice");
+        neighbors.sort();
+        assert_eq!(neighbors, vec!["book1", "book2"]);
+
+        // Non-existent source returns empty
+        assert!(hg.neighbors_by_id(&buys, "nobody").is_empty());
+    }
+
+    #[test]
+    fn test_degree_methods() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&buys, "alice", "book2");
+        hg.add_edge(&buys, "bob", "book1");
+
+        let alice_idx = hg.get_node_index(&NodeType::new("user"), "alice").unwrap();
+        let book1_idx = hg.get_node_index(&NodeType::new("item"), "book1").unwrap();
+
+        assert_eq!(hg.out_degree(&buys, alice_idx), 2);
+        assert_eq!(hg.in_degree(&buys, book1_idx), 2);
+        // Non-existent edge type returns 0
+        let fake = EdgeType::new("a", "b", "c");
+        assert_eq!(hg.out_degree(&fake, 0), 0);
+    }
+
+    #[test]
+    fn test_rebuild_adjacency() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&buys, "alice", "book2");
+
+        // Simulate what happens after deserialization: clear the adj indexes
+        for store in hg.edge_stores.values_mut() {
+            store.fwd_adj.clear();
+            store.rev_adj.clear();
+        }
+
+        // Before rebuild, adjacency is empty
+        let alice_idx = hg.get_node_index(&NodeType::new("user"), "alice").unwrap();
+        assert!(hg.neighbors(&buys, alice_idx).is_empty());
+
+        // After rebuild, adjacency works
+        hg.rebuild_adjacency();
+        let neighbors = hg.neighbors(&buys, alice_idx);
+        assert_eq!(neighbors.len(), 2);
+    }
+
+    #[test]
+    fn test_to_knowledge_graph() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        let follows = EdgeType::new("user", "follows", "user");
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&follows, "alice", "bob");
+
+        let kg = hg.to_knowledge_graph();
+        assert_eq!(kg.triple_count(), 2);
+        assert_eq!(kg.entity_count(), 3); // alice, bob, book1
+    }
+
+    #[test]
+    fn test_to_knowledge_graph_roundtrip() {
+        let mut kg = crate::KnowledgeGraph::new();
+        kg.add_triple(crate::Triple::new("Alice", "knows", "Bob"));
+        kg.add_triple(crate::Triple::new("Bob", "works_at", "Acme"));
+
+        let hg = HeteroGraph::from(&kg);
+        let kg2 = hg.to_knowledge_graph();
+
+        assert_eq!(kg2.entity_count(), kg.entity_count());
+        assert_eq!(kg2.triple_count(), kg.triple_count());
+    }
+
+    #[test]
+    fn test_edge_store_from_edges_builds_adj() {
+        let store = EdgeStore::from_edges(vec![0, 0, 1], vec![1, 2, 2]);
+        assert_eq!(store.neighbors(0), &[1, 2]);
+        assert_eq!(store.neighbors(1), &[2]);
+        assert_eq!(store.incoming(2), &[0, 1]);
     }
 }

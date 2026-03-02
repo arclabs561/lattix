@@ -339,6 +339,50 @@ impl HyperGraph {
         entities
     }
 
+    /// Convert the hypergraph to a [`KnowledgeGraph`](crate::KnowledgeGraph).
+    ///
+    /// Uses [`to_reified_triples`](Self::to_reified_triples) to flatten all facts
+    /// (plain triples, hyper-triples, and hyperedges) into triples.
+    pub fn to_knowledge_graph(&self) -> crate::KnowledgeGraph {
+        let mut kg = crate::KnowledgeGraph::new();
+        for triple in self.to_reified_triples() {
+            kg.add_triple(triple);
+        }
+        kg
+    }
+
+    /// Find hyper-triples with a specific qualifier key-value pair.
+    pub fn find_by_qualifier(&self, key: &str, value: &str) -> Vec<&HyperTriple> {
+        self.hyper_triples
+            .iter()
+            .filter(|ht| {
+                ht.qualifiers
+                    .iter()
+                    .any(|(k, v)| k.as_str() == key && v.as_str() == value)
+            })
+            .collect()
+    }
+
+    /// Find all hyper-triples involving a specific entity (as subject, object, or qualifier value).
+    pub fn find_by_entity(&self, entity: &str) -> Vec<&HyperTriple> {
+        self.hyper_triples
+            .iter()
+            .filter(|ht| {
+                ht.core.subject.as_str() == entity
+                    || ht.core.object.as_str() == entity
+                    || ht.qualifiers.values().any(|v| v.as_str() == entity)
+            })
+            .collect()
+    }
+
+    /// Find hyper-triples where a given entity is the subject.
+    pub fn hyper_triples_for_subject(&self, subject: &str) -> Vec<&HyperTriple> {
+        self.hyper_triples
+            .iter()
+            .filter(|ht| ht.core.subject.as_str() == subject)
+            .collect()
+    }
+
     /// Convert entire hypergraph to reified triples.
     ///
     /// This enables use with triple-based embedding methods but loses
@@ -366,6 +410,16 @@ impl HyperGraph {
         }
 
         result
+    }
+}
+
+impl From<&crate::KnowledgeGraph> for HyperGraph {
+    fn from(kg: &crate::KnowledgeGraph) -> Self {
+        let mut hg = HyperGraph::new();
+        for triple in kg.triples() {
+            hg.add_triple(triple.clone());
+        }
+        hg
     }
 }
 
@@ -438,5 +492,124 @@ mod tests {
         let entities = hg.entities();
         assert!(entities.contains(&EntityId::from("Einstein")));
         assert!(entities.contains(&EntityId::from("Bohr")));
+    }
+
+    #[test]
+    fn test_from_knowledge_graph() {
+        let mut kg = crate::KnowledgeGraph::new();
+        kg.add_triple(Triple::new("Einstein", "born_in", "Ulm"));
+        kg.add_triple(Triple::new("Einstein", "won", "Nobel Prize"));
+        kg.add_triple(Triple::new("Ulm", "located_in", "Germany"));
+
+        let hg = HyperGraph::from(&kg);
+
+        assert_eq!(hg.triples.len(), 3);
+        assert!(hg.hyper_triples.is_empty());
+        assert!(hg.hyperedges.is_empty());
+    }
+
+    #[test]
+    fn test_to_knowledge_graph() {
+        let mut hg = HyperGraph::new();
+        hg.add_triple(Triple::new("Einstein", "born_in", "Ulm"));
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Einstein", "won", "Nobel Prize")
+                .with_qualifier("year", "1921"),
+        );
+
+        let kg = hg.to_knowledge_graph();
+
+        // Plain triple + hyper-triple core + qualifier triple = 3
+        assert_eq!(kg.triple_count(), 3);
+    }
+
+    #[test]
+    fn test_kg_roundtrip_plain_triples() {
+        // KG -> HyperGraph -> KG should preserve triple count for plain triples
+        let mut kg = crate::KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "r1", "B"));
+        kg.add_triple(Triple::new("B", "r2", "C"));
+        kg.add_triple(Triple::new("C", "r3", "A"));
+
+        let hg = HyperGraph::from(&kg);
+        let kg2 = hg.to_knowledge_graph();
+
+        assert_eq!(kg.triple_count(), kg2.triple_count());
+    }
+
+    #[test]
+    fn test_find_by_qualifier() {
+        let mut hg = HyperGraph::new();
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Einstein", "won", "Nobel Prize")
+                .with_qualifier("year", "1921"),
+        );
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Curie", "won", "Nobel Prize")
+                .with_qualifier("year", "1903"),
+        );
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Bohr", "won", "Nobel Prize")
+                .with_qualifier("year", "1922"),
+        );
+
+        let results = hg.find_by_qualifier("year", "1921");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].core.subject.as_str(), "Einstein");
+
+        let empty = hg.find_by_qualifier("year", "2000");
+        assert!(empty.is_empty());
+    }
+
+    #[test]
+    fn test_find_by_entity() {
+        let mut hg = HyperGraph::new();
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Einstein", "won", "Nobel Prize")
+                .with_qualifier("year", "1921"),
+        );
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Curie", "won", "Nobel Prize")
+                .with_qualifier("field", "Chemistry"),
+        );
+
+        // Einstein appears as subject
+        let results = hg.find_by_entity("Einstein");
+        assert_eq!(results.len(), 1);
+
+        // Nobel Prize appears as object in both
+        let results = hg.find_by_entity("Nobel Prize");
+        assert_eq!(results.len(), 2);
+
+        // Chemistry appears as qualifier value
+        let results = hg.find_by_entity("Chemistry");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].core.subject.as_str(), "Curie");
+    }
+
+    #[test]
+    fn test_hyper_triples_for_subject() {
+        let mut hg = HyperGraph::new();
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Einstein", "won", "Nobel Prize")
+                .with_qualifier("year", "1921"),
+        );
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Einstein", "educated_at", "ETH Zurich")
+                .with_qualifier("degree", "PhD"),
+        );
+        hg.add_hyper_triple(
+            HyperTriple::from_parts("Curie", "won", "Nobel Prize")
+                .with_qualifier("year", "1903"),
+        );
+
+        let results = hg.hyper_triples_for_subject("Einstein");
+        assert_eq!(results.len(), 2);
+
+        let results = hg.hyper_triples_for_subject("Curie");
+        assert_eq!(results.len(), 1);
+
+        let results = hg.hyper_triples_for_subject("Bohr");
+        assert!(results.is_empty());
     }
 }
