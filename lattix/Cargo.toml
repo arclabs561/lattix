@@ -46,6 +46,10 @@ sophia = ["dep:sophia_api"]
 name = "random_walk_bench"
 harness = false
 
+[[bench]]
+name = "graph_bench"
+harness = false
+
 [lints.rust]
 missing_docs = "warn"
 
