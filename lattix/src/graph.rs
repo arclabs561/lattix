@@ -296,8 +296,7 @@ impl KnowledgeGraph {
             self.entity_index.get(object),
         ) {
             let mut edge_to_remove = None;
-            let mut edges = self.graph.edges_connecting(src_idx, dst_idx);
-            while let Some(edge_ref) = edges.next() {
+            for edge_ref in self.graph.edges_connecting(src_idx, dst_idx) {
                 if edge_ref.weight().relation_type == *predicate {
                     edge_to_remove = Some(edge_ref.id());
                     break;
