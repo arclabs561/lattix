@@ -2,7 +2,7 @@ use crate::{Entity, EntityId, Relation, RelationType, Result, Triple};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -42,8 +42,8 @@ pub struct KnowledgeGraph {
     /// Index: object EntityId -> triple indices (for O(d) relations_to)
     object_index: HashMap<EntityId, Vec<usize>>,
 
-    /// Cached relation types (for O(1) relation_types)
-    relation_type_cache: HashSet<RelationType>,
+    /// Index: predicate RelationType -> triple indices (for O(d) triples_with_relation)
+    predicate_index: HashMap<RelationType, Vec<usize>>,
 }
 
 /// Serde-only view of `KnowledgeGraph`.
@@ -91,7 +91,7 @@ impl<'de> serde::Deserialize<'de> for KnowledgeGraph {
             triples: raw.triples,
             subject_index: HashMap::new(),
             object_index: HashMap::new(),
-            relation_type_cache: HashSet::new(),
+            predicate_index: HashMap::new(),
         };
         kg.rebuild_indexes();
         Ok(kg)
@@ -113,7 +113,7 @@ impl KnowledgeGraph {
             triples: Vec::new(),
             subject_index: HashMap::new(),
             object_index: HashMap::new(),
-            relation_type_cache: HashSet::new(),
+            predicate_index: HashMap::new(),
         }
     }
 
@@ -125,7 +125,7 @@ impl KnowledgeGraph {
             triples: Vec::with_capacity(triples),
             subject_index: HashMap::with_capacity(entities),
             object_index: HashMap::with_capacity(entities),
-            relation_type_cache: HashSet::new(),
+            predicate_index: HashMap::new(),
         }
     }
 
@@ -136,7 +136,7 @@ impl KnowledgeGraph {
         self.triples.clear();
         self.subject_index.clear();
         self.object_index.clear();
-        self.relation_type_cache.clear();
+        self.predicate_index.clear();
     }
 
     /// Rebuild indexes derived from `triples`.
@@ -146,7 +146,7 @@ impl KnowledgeGraph {
     pub fn rebuild_indexes(&mut self) {
         self.subject_index.clear();
         self.object_index.clear();
-        self.relation_type_cache.clear();
+        self.predicate_index.clear();
 
         for (idx, triple) in self.triples.iter().enumerate() {
             self.subject_index
@@ -157,7 +157,10 @@ impl KnowledgeGraph {
                 .entry(triple.object.clone())
                 .or_default()
                 .push(idx);
-            self.relation_type_cache.insert(triple.predicate.clone());
+            self.predicate_index
+                .entry(triple.predicate.clone())
+                .or_default()
+                .push(idx);
         }
     }
 
@@ -261,7 +264,10 @@ impl KnowledgeGraph {
             .entry(triple.object.clone())
             .or_default()
             .push(triple_idx);
-        self.relation_type_cache.insert(triple.predicate.clone());
+        self.predicate_index
+            .entry(triple.predicate.clone())
+            .or_default()
+            .push(triple_idx);
 
         // Store triple
         self.triples.push(triple);
@@ -307,12 +313,18 @@ impl KnowledgeGraph {
             }
         }
 
-        // Remove triple_idx from subject_index and object_index
+        // Remove triple_idx from subject_index, object_index, and predicate_index
         if let Some(indices) = self.subject_index.get_mut(&removed.subject) {
             indices.retain(|&i| i != triple_idx);
         }
         if let Some(indices) = self.object_index.get_mut(&removed.object) {
             indices.retain(|&i| i != triple_idx);
+        }
+        if let Some(indices) = self.predicate_index.get_mut(&removed.predicate) {
+            indices.retain(|&i| i != triple_idx);
+            if indices.is_empty() {
+                self.predicate_index.remove(&removed.predicate);
+            }
         }
 
         // If swap_remove moved the last element into triple_idx, update its index entries.
@@ -337,11 +349,14 @@ impl KnowledgeGraph {
                     }
                 }
             }
-        }
-
-        // Update relation_type_cache: remove the predicate if no other triple uses it.
-        if !self.triples.iter().any(|t| t.predicate == removed.predicate) {
-            self.relation_type_cache.remove(&removed.predicate);
+            if let Some(indices) = self.predicate_index.get_mut(&swapped.predicate) {
+                for i in indices.iter_mut() {
+                    if *i == swapped_from {
+                        *i = triple_idx;
+                        break;
+                    }
+                }
+            }
         }
 
         true
@@ -413,15 +428,14 @@ impl KnowledgeGraph {
         }
     }
 
-    /// Get all triples with a given relation type.
-    /// Note: This is still O(N) as we don't index by relation type.
-    /// Consider adding a relation_index if this is a hot path.
+    /// Get all triples with a given relation type. O(d) where d is the
+    /// number of triples with that predicate.
     pub fn triples_with_relation(&self, relation: impl Into<RelationType>) -> Vec<&Triple> {
         let relation = relation.into();
-        self.triples
-            .iter()
-            .filter(|t| t.predicate == relation)
-            .collect()
+        match self.predicate_index.get(&relation) {
+            Some(indices) => indices.iter().map(|&i| &self.triples[i]).collect(),
+            None => vec![],
+        }
     }
 
     /// Find a path between two entities.
@@ -492,12 +506,12 @@ impl KnowledgeGraph {
 
     /// Get all unique relation types in the graph. O(1).
     pub fn relation_types(&self) -> Vec<&RelationType> {
-        self.relation_type_cache.iter().collect()
+        self.predicate_index.keys().collect()
     }
 
     /// Number of unique relation types. O(1).
     pub fn relation_type_count(&self) -> usize {
-        self.relation_type_cache.len()
+        self.predicate_index.len()
     }
 
     /// Get neighbors of an entity (outgoing edges). O(d).
