@@ -491,6 +491,152 @@ mod clear_props {
     }
 }
 
+mod remove_triple_props {
+    use super::*;
+
+    fn arb_entity_id() -> impl Strategy<Value = String> {
+        "[a-zA-Z][a-zA-Z0-9]{0,8}".prop_map(|s| s)
+    }
+
+    fn arb_relation() -> impl Strategy<Value = String> {
+        "[a-z_]{1,6}".prop_map(|s| s)
+    }
+
+    prop_compose! {
+        fn arb_triple()(
+            subject in arb_entity_id(),
+            predicate in arb_relation(),
+            object in arb_entity_id(),
+        ) -> (String, String, String) {
+            (subject, predicate, object)
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Removing a triple decreases triple_count by 1.
+        #[test]
+        fn remove_then_count(
+            triples in prop::collection::vec(arb_triple(), 1..30),
+            remove_idx in any::<prop::sample::Index>(),
+        ) {
+            use lattix::{KnowledgeGraph, Triple, RelationType, EntityId};
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let before = kg.triple_count();
+            let idx = remove_idx.index(triples.len());
+            let (ref s, ref p, ref o) = triples[idx];
+            let removed = kg.remove_triple(
+                &EntityId::new(s.as_str()),
+                &RelationType::new(p.as_str()),
+                &EntityId::new(o.as_str()),
+            );
+
+            prop_assert!(removed, "Triple should have been found");
+            prop_assert_eq!(kg.triple_count(), before - 1);
+        }
+
+        /// Removing a nonexistent triple returns false and changes nothing.
+        #[test]
+        fn remove_nonexistent(
+            triples in prop::collection::vec(arb_triple(), 0..20),
+        ) {
+            use lattix::{KnowledgeGraph, Triple, RelationType, EntityId};
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let before = kg.triple_count();
+            let removed = kg.remove_triple(
+                &EntityId::new("ZZZZ_nonexistent"),
+                &RelationType::new("no_such_rel"),
+                &EntityId::new("ZZZZ_also_missing"),
+            );
+
+            prop_assert!(!removed);
+            prop_assert_eq!(kg.triple_count(), before);
+        }
+
+        /// Add, remove, re-add should work correctly.
+        #[test]
+        fn add_remove_add(
+            subject in arb_entity_id(),
+            predicate in arb_relation(),
+            object in arb_entity_id(),
+        ) {
+            use lattix::{KnowledgeGraph, Triple, RelationType, EntityId};
+
+            let mut kg = KnowledgeGraph::new();
+            kg.add_triple(Triple::new(subject.as_str(), predicate.as_str(), object.as_str()));
+            prop_assert_eq!(kg.triple_count(), 1);
+
+            let removed = kg.remove_triple(
+                &EntityId::new(subject.as_str()),
+                &RelationType::new(predicate.as_str()),
+                &EntityId::new(object.as_str()),
+            );
+            prop_assert!(removed);
+            prop_assert_eq!(kg.triple_count(), 0);
+
+            // Re-add
+            kg.add_triple(Triple::new(subject.as_str(), predicate.as_str(), object.as_str()));
+            prop_assert_eq!(kg.triple_count(), 1);
+
+            // Verify indexes work after re-add
+            let rels = kg.relations_from(subject.as_str());
+            prop_assert!(!rels.is_empty(), "relations_from should find the re-added triple");
+            let rels_to = kg.relations_to(object.as_str());
+            prop_assert!(!rels_to.is_empty(), "relations_to should find the re-added triple");
+        }
+
+        /// After removal, indexes remain consistent (bidirectional check).
+        #[test]
+        fn remove_preserves_index_consistency(
+            triples in prop::collection::vec(arb_triple(), 2..30),
+            remove_idx in any::<prop::sample::Index>(),
+        ) {
+            use lattix::{KnowledgeGraph, Triple, RelationType, EntityId};
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let idx = remove_idx.index(triples.len());
+            let (ref s, ref p, ref o) = triples[idx];
+            kg.remove_triple(
+                &EntityId::new(s.as_str()),
+                &RelationType::new(p.as_str()),
+                &EntityId::new(o.as_str()),
+            );
+
+            // Verify bidirectional consistency for all remaining triples
+            for triple in kg.triples() {
+                let from_rels = kg.relations_from(triple.subject.as_str());
+                prop_assert!(
+                    from_rels.iter().any(|t| t.predicate == triple.predicate && t.object == triple.object),
+                    "Triple {:?} not found via relations_from",
+                    triple
+                );
+
+                let to_rels = kg.relations_to(triple.object.as_str());
+                prop_assert!(
+                    to_rels.iter().any(|t| t.predicate == triple.predicate && t.subject == triple.subject),
+                    "Triple {:?} not found via relations_to",
+                    triple
+                );
+            }
+        }
+    }
+}
+
 mod invariant_props {
     use super::*;
 

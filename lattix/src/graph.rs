@@ -1,5 +1,6 @@
 use crate::{Entity, EntityId, Relation, RelationType, Result, Triple};
 use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -264,6 +265,87 @@ impl KnowledgeGraph {
 
         // Store triple
         self.triples.push(triple);
+    }
+
+    /// Remove a triple from the graph.
+    ///
+    /// Returns `true` if the triple was found and removed, `false` if it was not present.
+    /// Entity nodes are kept even if they have no remaining edges (keeps `entity_index` stable).
+    /// Uses `swap_remove` internally, so triple iteration order is not preserved.
+    pub fn remove_triple(
+        &mut self,
+        subject: &EntityId,
+        predicate: &RelationType,
+        object: &EntityId,
+    ) -> bool {
+        // Find the triple index
+        let triple_idx = match self.triples.iter().position(|t| {
+            t.subject == *subject && t.predicate == *predicate && t.object == *object
+        }) {
+            Some(idx) => idx,
+            None => return false,
+        };
+
+        let removed = self.triples.swap_remove(triple_idx);
+
+        // Remove the corresponding edge from petgraph.
+        // There may be parallel edges between the same nodes, so we must find the one
+        // with the matching relation_type.
+        if let (Some(&src_idx), Some(&dst_idx)) = (
+            self.entity_index.get(subject),
+            self.entity_index.get(object),
+        ) {
+            let mut edge_to_remove = None;
+            let mut edges = self.graph.edges_connecting(src_idx, dst_idx);
+            while let Some(edge_ref) = edges.next() {
+                if edge_ref.weight().relation_type == *predicate {
+                    edge_to_remove = Some(edge_ref.id());
+                    break;
+                }
+            }
+            if let Some(edge_id) = edge_to_remove {
+                self.graph.remove_edge(edge_id);
+            }
+        }
+
+        // Remove triple_idx from subject_index and object_index
+        if let Some(indices) = self.subject_index.get_mut(&removed.subject) {
+            indices.retain(|&i| i != triple_idx);
+        }
+        if let Some(indices) = self.object_index.get_mut(&removed.object) {
+            indices.retain(|&i| i != triple_idx);
+        }
+
+        // If swap_remove moved the last element into triple_idx, update its index entries.
+        // After swap_remove, self.triples.len() is the old last index.
+        let swapped_from = self.triples.len(); // the old index of the element now at triple_idx
+        if triple_idx < swapped_from {
+            // An element was swapped: update its entries from swapped_from -> triple_idx
+            let swapped = &self.triples[triple_idx];
+            if let Some(indices) = self.subject_index.get_mut(&swapped.subject) {
+                for i in indices.iter_mut() {
+                    if *i == swapped_from {
+                        *i = triple_idx;
+                        break;
+                    }
+                }
+            }
+            if let Some(indices) = self.object_index.get_mut(&swapped.object) {
+                for i in indices.iter_mut() {
+                    if *i == swapped_from {
+                        *i = triple_idx;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update relation_type_cache: remove the predicate if no other triple uses it.
+        if !self.triples.iter().any(|t| t.predicate == removed.predicate) {
+            self.relation_type_cache.remove(&removed.predicate);
+        }
+
+        true
     }
 
     /// Get or create an entity node.
@@ -619,6 +701,59 @@ mod tests {
         assert!(kg.has_edge("A", "B"));
         assert!(!kg.has_edge("B", "A"));
         assert!(!kg.has_edge("A", "C"));
+    }
+
+    #[test]
+    fn test_remove_triple() {
+        let mut kg = KnowledgeGraph::new();
+
+        kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
+        kg.add_triple(Triple::new("Apple", "headquartered_in", "Cupertino"));
+        kg.add_triple(Triple::new("Steve Jobs", "born_in", "San Francisco"));
+
+        assert_eq!(kg.triple_count(), 3);
+
+        // Remove existing triple
+        let removed = kg.remove_triple(
+            &"Apple".into(),
+            &"founded_by".into(),
+            &"Steve Jobs".into(),
+        );
+        assert!(removed);
+        assert_eq!(kg.triple_count(), 2);
+
+        // Entities should remain (not removed)
+        assert_eq!(kg.entity_count(), 4);
+
+        // relations_from should no longer include the removed triple
+        let apple_rels = kg.relations_from("Apple");
+        assert_eq!(apple_rels.len(), 1);
+        assert_eq!(apple_rels[0].predicate.as_str(), "headquartered_in");
+
+        // Removing nonexistent triple returns false
+        let not_removed = kg.remove_triple(
+            &"Apple".into(),
+            &"founded_by".into(),
+            &"Steve Jobs".into(),
+        );
+        assert!(!not_removed);
+        assert_eq!(kg.triple_count(), 2);
+    }
+
+    #[test]
+    fn test_remove_triple_updates_relation_cache() {
+        let mut kg = KnowledgeGraph::new();
+
+        kg.add_triple(Triple::new("A", "rel1", "B"));
+        kg.add_triple(Triple::new("B", "rel2", "C"));
+        assert_eq!(kg.relation_type_count(), 2);
+
+        kg.remove_triple(&"A".into(), &"rel1".into(), &"B".into());
+        assert_eq!(kg.relation_type_count(), 1);
+
+        // rel2 should still be there
+        let types: Vec<_> = kg.relation_types().iter().map(|r| r.as_str().to_string()).collect();
+        assert!(types.contains(&"rel2".to_string()));
     }
 
     #[cfg(feature = "binary")]
