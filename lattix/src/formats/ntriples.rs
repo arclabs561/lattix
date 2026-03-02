@@ -5,76 +5,88 @@
 //!
 //! Reference: <https://www.w3.org/TR/rdf12-n-triples/>
 
-use super::rio_helpers;
 use crate::{KnowledgeGraph, Result, Triple};
-use rio_api::formatter::TriplesFormatter;
-use rio_api::model::{NamedNode, Subject, Term};
-use rio_api::parser::TriplesParser;
-use rio_turtle::{NTriplesFormatter, NTriplesParser};
-use std::io::{BufRead, Write};
+use oxttl::NTriplesParser;
+use std::io::{Read, Write};
+
+/// Convert an oxrdf subject to a lattix string.
+fn subject_to_string(s: &oxrdf::NamedOrBlankNode) -> String {
+    match s {
+        oxrdf::NamedOrBlankNode::NamedNode(n) => n.as_str().to_string(),
+        oxrdf::NamedOrBlankNode::BlankNode(b) => format!("_:{}", b.as_str()),
+    }
+}
+
+/// Convert an oxrdf term to a lattix string.
+fn term_to_string(t: &oxrdf::Term) -> String {
+    match t {
+        oxrdf::Term::NamedNode(n) => n.as_str().to_string(),
+        oxrdf::Term::BlankNode(b) => format!("_:{}", b.as_str()),
+        oxrdf::Term::Literal(l) => {
+            if let Some(lang) = l.language() {
+                format!("\"{}\"@{}", l.value(), lang)
+            } else {
+                let dt = l.datatype().as_str();
+                if dt == "http://www.w3.org/2001/XMLSchema#string" {
+                    format!("\"{}\"", l.value())
+                } else {
+                    format!("\"{}\"^^<{}>", l.value(), dt)
+                }
+            }
+        }
+    }
+}
+
+/// Convert a lattix string to N-Triples term syntax for serialization.
+fn to_nt_subject(s: &str) -> String {
+    if let Some(id) = s.strip_prefix("_:") {
+        format!("_:{}", id)
+    } else {
+        format!("<{}>", s)
+    }
+}
+
+fn to_nt_object(s: &str) -> String {
+    if s.starts_with("_:") || s.starts_with('"') {
+        s.to_string()
+    } else {
+        format!("<{}>", s)
+    }
+}
 
 /// N-Triples format handler.
 pub struct NTriples;
 
 impl NTriples {
-    /// Parse N-Triples from a reader using Rio.
-    pub fn read<R: BufRead>(reader: R) -> Result<KnowledgeGraph> {
-        let mut parser = NTriplesParser::new(reader);
+    /// Parse N-Triples from a reader.
+    pub fn read<R: Read>(reader: R) -> Result<KnowledgeGraph> {
         let mut kg = KnowledgeGraph::new();
 
-        parser
-            .parse_all(&mut |triple| {
-                let s_str = match triple.subject {
-                    Subject::NamedNode(n) => n.iri.to_string(),
-                    Subject::BlankNode(n) => format!("_:{}", n.id),
-                    Subject::Triple(t) => format!("{}", t),
-                };
+        for result in NTriplesParser::new().for_reader(reader) {
+            let triple =
+                result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
-                let NamedNode { iri } = triple.predicate;
-                let p_str = iri.to_string();
+            let s = subject_to_string(&triple.subject);
+            let p = triple.predicate.as_str().to_string();
+            let o = term_to_string(&triple.object);
 
-                let o_str = match triple.object {
-                    Term::NamedNode(n) => n.iri.to_string(),
-                    Term::BlankNode(n) => format!("_:{}", n.id),
-                    Term::Literal(l) => format!("{}", l),
-                    Term::Triple(t) => format!("{}", t),
-                };
-
-                kg.add_triple(Triple::new(s_str, p_str, o_str));
-                Ok(()) as std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
-            })
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            kg.add_triple(Triple::new(s, p, o));
+        }
 
         Ok(kg)
     }
 
-    /// Write knowledge graph to N-Triples format using Rio.
+    /// Write knowledge graph to N-Triples format.
     ///
     /// Returns an error if any triple cannot be converted to valid RDF terms
     /// (e.g., a literal in subject position).
-    pub fn write<W: Write>(kg: &KnowledgeGraph, writer: W) -> Result<()> {
-        let mut formatter = NTriplesFormatter::new(writer);
-
+    pub fn write<W: Write>(kg: &KnowledgeGraph, mut writer: W) -> Result<()> {
         for triple in kg.triples() {
-            let s = rio_helpers::to_subject(triple.subject.as_str());
-            let p = rio_helpers::to_named_node(triple.predicate.as_str());
-            let o = rio_helpers::to_object(triple.object.as_str());
-
-            if let (Some(s), Some(p), Some(o)) = (s, p, o) {
-                formatter.format(&rio_api::model::Triple {
-                    subject: s,
-                    predicate: p,
-                    object: o,
-                })?;
-            } else {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Could not serialize triple to N-Triples: {:?}", triple),
-                )
-                .into());
-            }
+            let s = to_nt_subject(triple.subject.as_str());
+            let p = format!("<{}>", triple.predicate.as_str());
+            let o = to_nt_object(triple.object.as_str());
+            writeln!(writer, "{} {} {} .", s, p, o)?;
         }
-        formatter.finish()?;
         Ok(())
     }
 
@@ -106,5 +118,34 @@ mod tests {
         let output = NTriples::to_string(&kg).unwrap();
         assert!(output.contains("Apple"));
         assert!(output.contains("founded_by"));
+    }
+
+    #[test]
+    fn test_blank_nodes() {
+        let input = "<http://example.org/s> <http://example.org/p> _:b0 .\n";
+        let kg = NTriples::parse(input).unwrap();
+        assert_eq!(kg.triple_count(), 1);
+        let triple = kg.triples().next().unwrap();
+        assert_eq!(triple.object.as_str(), "_:b0");
+    }
+
+    #[test]
+    fn test_literals() {
+        let input =
+            "<http://example.org/s> <http://example.org/p> \"hello\"@en .\n";
+        let kg = NTriples::parse(input).unwrap();
+        let triple = kg.triples().next().unwrap();
+        assert_eq!(triple.object.as_str(), "\"hello\"@en");
+    }
+
+    #[test]
+    fn test_typed_literal() {
+        let input = "<http://example.org/s> <http://example.org/p> \"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n";
+        let kg = NTriples::parse(input).unwrap();
+        let triple = kg.triples().next().unwrap();
+        assert_eq!(
+            triple.object.as_str(),
+            "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>"
+        );
     }
 }

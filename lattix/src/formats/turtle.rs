@@ -4,82 +4,112 @@
 //!
 //! Reference: <https://www.w3.org/TR/rdf12-turtle/>
 
-use super::rio_helpers;
 use crate::{KnowledgeGraph, Result, Triple};
-use oxiri::Iri;
-use rio_api::formatter::TriplesFormatter;
-use rio_api::model::{NamedNode, Subject, Term};
-use rio_api::parser::TriplesParser;
-use rio_turtle::{TurtleFormatter, TurtleParser};
+use oxttl::TurtleParser;
 use std::collections::HashMap;
-use std::io::{BufRead, Write};
+use std::io::{Read, Write};
 
 /// Turtle format handler.
 pub struct Turtle;
 
-impl Turtle {
-    /// Parse Turtle from a reader using Rio.
-    pub fn read<R: BufRead>(reader: R, base_iri: Option<&str>) -> Result<KnowledgeGraph> {
-        let base_iri_parsed = if let Some(base) = base_iri {
-            Some(
-                Iri::parse(base.to_string())
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?,
-            )
-        } else {
-            None
-        };
+/// Convert an oxrdf subject to a lattix string.
+fn subject_to_string(s: &oxrdf::NamedOrBlankNode) -> String {
+    match s {
+        oxrdf::NamedOrBlankNode::NamedNode(n) => n.as_str().to_string(),
+        oxrdf::NamedOrBlankNode::BlankNode(b) => format!("_:{}", b.as_str()),
+    }
+}
 
-        let mut parser = TurtleParser::new(reader, base_iri_parsed);
+/// Convert an oxrdf term to a lattix string.
+fn term_to_string(t: &oxrdf::Term) -> String {
+    match t {
+        oxrdf::Term::NamedNode(n) => n.as_str().to_string(),
+        oxrdf::Term::BlankNode(b) => format!("_:{}", b.as_str()),
+        oxrdf::Term::Literal(l) => {
+            if let Some(lang) = l.language() {
+                format!("\"{}\"@{}", l.value(), lang)
+            } else {
+                let dt = l.datatype().as_str();
+                if dt == "http://www.w3.org/2001/XMLSchema#string" {
+                    format!("\"{}\"", l.value())
+                } else {
+                    format!("\"{}\"^^<{}>", l.value(), dt)
+                }
+            }
+        }
+    }
+}
+
+impl Turtle {
+    /// Parse Turtle from a reader.
+    pub fn read<R: Read>(reader: R, base_iri: Option<&str>) -> Result<KnowledgeGraph> {
+        let mut parser = TurtleParser::new();
+        if let Some(base) = base_iri {
+            parser = parser
+                .with_base_iri(base)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+        }
+
         let mut kg = KnowledgeGraph::new();
 
-        parser
-            .parse_all(&mut |triple| {
-                let s_str = match triple.subject {
-                    Subject::NamedNode(n) => n.iri.to_string(),
-                    Subject::BlankNode(n) => format!("_:{}", n.id),
-                    Subject::Triple(t) => format!("{}", t),
-                };
+        for result in parser.for_reader(reader) {
+            let triple =
+                result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
-                let NamedNode { iri } = triple.predicate;
-                let p_str = iri.to_string();
+            let s = subject_to_string(&triple.subject);
+            let p = triple.predicate.as_str().to_string();
+            let o = term_to_string(&triple.object);
 
-                let o_str = match triple.object {
-                    Term::NamedNode(n) => n.iri.to_string(),
-                    Term::BlankNode(n) => format!("_:{}", n.id),
-                    Term::Literal(l) => format!("{}", l),
-                    Term::Triple(t) => format!("{}", t),
-                };
-
-                kg.add_triple(Triple::new(s_str, p_str, o_str));
-                Ok(()) as std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>
-            })
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            kg.add_triple(Triple::new(s, p, o));
+        }
 
         Ok(kg)
     }
 
-    /// Write knowledge graph to Turtle format using Rio.
+    /// Write knowledge graph to Turtle format.
+    ///
+    /// Outputs N-Triples-compatible syntax (no prefix compression).
+    /// For prefix-compressed output, use a dedicated Turtle serializer.
     pub fn write<W: Write>(
         kg: &KnowledgeGraph,
-        writer: W,
+        mut writer: W,
         _prefixes: &HashMap<String, String>,
     ) -> Result<()> {
-        let mut formatter = TurtleFormatter::new(writer);
-
+        // Group by subject for readability
+        let mut by_subject: std::collections::HashMap<&str, Vec<_>> =
+            std::collections::HashMap::new();
         for triple in kg.triples() {
-            let s = rio_helpers::to_subject(triple.subject.as_str());
-            let p = rio_helpers::to_named_node(triple.predicate.as_str());
-            let o = rio_helpers::to_object(triple.object.as_str());
-
-            if let (Some(s), Some(p), Some(o)) = (s, p, o) {
-                formatter.format(&rio_api::model::Triple {
-                    subject: s,
-                    predicate: p,
-                    object: o,
-                })?;
-            }
+            by_subject
+                .entry(triple.subject.as_str())
+                .or_default()
+                .push(triple);
         }
-        formatter.finish()?;
+
+        for (subject, triples) in &by_subject {
+            let s = if subject.starts_with("_:") {
+                subject.to_string()
+            } else {
+                format!("<{}>", subject)
+            };
+
+            for (i, triple) in triples.iter().enumerate() {
+                let p = format!("<{}>", triple.predicate.as_str());
+                let obj = triple.object.as_str();
+                let o = if obj.starts_with("_:") || obj.starts_with('"') {
+                    obj.to_string()
+                } else {
+                    format!("<{}>", obj)
+                };
+
+                if i == 0 {
+                    write!(writer, "{} {} {}", s, p, o)?;
+                } else {
+                    write!(writer, " ;\n    {} {}", p, o)?;
+                }
+            }
+            writeln!(writer, " .")?;
+        }
+
         Ok(())
     }
 
@@ -117,15 +147,43 @@ mod tests {
     use crate::Triple;
 
     #[test]
+    fn test_turtle_parse() {
+        let input = r#"
+@prefix ex: <http://example.org/> .
+ex:Apple ex:founded_by ex:Steve_Jobs .
+"#;
+        let kg = Turtle::read(std::io::Cursor::new(input), None).unwrap();
+        assert_eq!(kg.triple_count(), 1);
+        let triple = kg.triples().next().unwrap();
+        assert_eq!(triple.subject.as_str(), "http://example.org/Apple");
+        assert_eq!(triple.predicate.as_str(), "http://example.org/founded_by");
+        assert_eq!(triple.object.as_str(), "http://example.org/Steve_Jobs");
+    }
+
+    #[test]
     fn test_turtle_output() {
         let mut kg = KnowledgeGraph::new();
         kg.add_triple(Triple::new(
-            "<http://example.org/Apple>",
-            "<http://example.org/founded_by>",
-            "<http://example.org/Steve_Jobs>",
+            "http://example.org/Apple",
+            "http://example.org/founded_by",
+            "http://example.org/Steve_Jobs",
         ));
 
         let output = Turtle::to_string(&kg).unwrap();
         assert!(output.contains("Apple"));
+    }
+
+    #[test]
+    fn test_turtle_with_base_iri() {
+        let input = r#"
+@base <http://example.org/> .
+<Apple> <founded_by> <Steve_Jobs> .
+"#;
+        let kg = Turtle::read(
+            std::io::Cursor::new(input),
+            Some("http://example.org/"),
+        )
+        .unwrap();
+        assert_eq!(kg.triple_count(), 1);
     }
 }
