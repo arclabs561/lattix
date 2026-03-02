@@ -222,6 +222,10 @@ impl KnowledgeGraph {
     }
 
     /// Add a triple to the graph.
+    ///
+    /// Duplicate triples are stored, not deduplicated. Adding the same
+    /// (subject, predicate, object) twice will increment `triple_count()` by 2
+    /// and create two parallel edges in the underlying petgraph.
     pub fn add_triple(&mut self, triple: Triple) {
         // Ensure subject entity exists
         let subject_idx = self.get_or_create_entity(&triple.subject);

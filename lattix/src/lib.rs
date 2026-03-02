@@ -1,5 +1,6 @@
 // Allow minor clippy style warnings at crate level
 // These are mostly style preferences, not bugs
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![allow(unused_results)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -134,7 +135,7 @@
 //! - **HGT**: Heterogeneous graph transformers
 //! - **Link prediction**: Typed edge prediction
 //!
-//! # Serialization Formats
+//! # Serialization Formats (requires `formats` feature)
 //!
 //! Supports modern RDF 1.2 specifications (2024):
 //! - N-Triples - Line-based, simple (fastest parsing)
@@ -142,7 +143,7 @@
 //! - Turtle - Human-readable (best for debugging)
 //! - JSON-LD - Linked data (web integration)
 //!
-//! # Algorithms
+//! # Algorithms (requires `algo` feature)
 //!
 //! ## Centrality ([`algo::centrality`])
 //!
