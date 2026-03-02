@@ -727,6 +727,34 @@ mod format_roundtrip_props {
             );
         }
 
+        /// JSON-LD round-trip: serialize then parse back, triple count must match.
+        #[test]
+        fn jsonld_roundtrip(
+            triples in prop::collection::vec(arb_iri_triple(), 1..20),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+            use lattix::formats::JsonLd;
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let serialized = JsonLd::to_string(&kg).expect("JSON-LD serialization failed");
+            let recovered = JsonLd::parse(&serialized).expect("JSON-LD parse failed");
+
+            prop_assert_eq!(
+                kg.triple_count(),
+                recovered.triple_count(),
+                "Triple count changed after JSON-LD roundtrip"
+            );
+            prop_assert_eq!(
+                kg.entity_count(),
+                recovered.entity_count(),
+                "Entity count changed after JSON-LD roundtrip"
+            );
+        }
+
         /// Turtle round-trip: serialize then parse back, triple count must match.
         #[test]
         fn turtle_roundtrip(
