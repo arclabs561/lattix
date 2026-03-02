@@ -4,6 +4,7 @@
 //!
 //! Reference: <https://www.w3.org/TR/rdf12-turtle/>
 
+use super::rio_helpers;
 use crate::{KnowledgeGraph, Result, Triple};
 use oxiri::Iri;
 use rio_api::formatter::TriplesFormatter;
@@ -62,16 +63,16 @@ impl Turtle {
     pub fn write<W: Write>(
         kg: &KnowledgeGraph,
         writer: W,
-        _prefixes: &HashMap<String, String>, // Rio handles prefixes if we register them, todo later
+        _prefixes: &HashMap<String, String>,
     ) -> Result<()> {
         let mut formatter = TurtleFormatter::new(writer);
 
         for triple in kg.triples() {
-            let s_node = parse_term_str(triple.subject.as_str());
-            let p_node = parse_named_node_str(triple.predicate.as_str());
-            let o_node = parse_term_str_obj(triple.object.as_str());
+            let s = rio_helpers::to_subject(triple.subject.as_str());
+            let p = rio_helpers::to_named_node(triple.predicate.as_str());
+            let o = rio_helpers::to_object(triple.object.as_str());
 
-            if let (Some(s), Some(p), Some(o)) = (s_node, p_node, o_node) {
+            if let (Some(s), Some(p), Some(o)) = (s, p, o) {
                 formatter.format(&rio_api::model::Triple {
                     subject: s,
                     predicate: p,
@@ -94,57 +95,6 @@ impl Turtle {
         let mut buf = Vec::new();
         Self::write_default(kg, &mut buf)?;
         Ok(String::from_utf8_lossy(&buf).to_string())
-    }
-}
-
-fn parse_named_node_str(s: &str) -> Option<NamedNode<'_>> {
-    if s.starts_with("_:") || s.starts_with('"') {
-        return None;
-    }
-    if s.starts_with('<') && s.ends_with('>') {
-        Some(NamedNode {
-            iri: &s[1..s.len() - 1],
-        })
-    } else {
-        Some(NamedNode { iri: s })
-    }
-}
-
-fn parse_term_str(s: &str) -> Option<Subject<'_>> {
-    if s.starts_with("_:") {
-        Some(Subject::BlankNode(rio_api::model::BlankNode {
-            id: &s[2..],
-        }))
-    } else if s.starts_with('"') {
-        None
-    } else if s.starts_with('<') && s.ends_with('>') {
-        Some(Subject::NamedNode(NamedNode {
-            iri: &s[1..s.len() - 1],
-        }))
-    } else {
-        Some(Subject::NamedNode(NamedNode { iri: s }))
-    }
-}
-
-fn parse_term_str_obj(s: &str) -> Option<Term<'_>> {
-    if s.starts_with("_:") {
-        Some(Term::BlankNode(rio_api::model::BlankNode { id: &s[2..] }))
-    } else if s.starts_with('"') {
-        // Simple literal fallback
-        if let Some(end) = s.rfind('"') {
-            if end > 0 {
-                return Some(Term::Literal(rio_api::model::Literal::Simple {
-                    value: &s[1..end],
-                }));
-            }
-        }
-        None
-    } else if s.starts_with('<') && s.ends_with('>') {
-        Some(Term::NamedNode(NamedNode {
-            iri: &s[1..s.len() - 1],
-        }))
-    } else {
-        Some(Term::NamedNode(NamedNode { iri: s }))
     }
 }
 

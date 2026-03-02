@@ -5,6 +5,7 @@
 //!
 //! Reference: <https://www.w3.org/TR/rdf12-n-triples/>
 
+use super::rio_helpers;
 use crate::{KnowledgeGraph, Result, Triple};
 use rio_api::formatter::TriplesFormatter;
 use rio_api::model::{NamedNode, Subject, Term};
@@ -49,32 +50,27 @@ impl NTriples {
     }
 
     /// Write knowledge graph to N-Triples format using Rio.
+    ///
+    /// Returns an error if any triple cannot be converted to valid RDF terms
+    /// (e.g., a literal in subject position).
     pub fn write<W: Write>(kg: &KnowledgeGraph, writer: W) -> Result<()> {
         let mut formatter = NTriplesFormatter::new(writer);
 
         for triple in kg.triples() {
-            let s_node = parse_term_str(triple.subject.as_str());
-            let p_node = parse_named_node_str(triple.predicate.as_str());
-            let o_node = parse_term_str_obj(triple.object.as_str());
+            let s = rio_helpers::to_subject(triple.subject.as_str());
+            let p = rio_helpers::to_named_node(triple.predicate.as_str());
+            let o = rio_helpers::to_object(triple.object.as_str());
 
-            if let (Some(s), Some(p), Some(o)) = (s_node, p_node, o_node) {
+            if let (Some(s), Some(p), Some(o)) = (s, p, o) {
                 formatter.format(&rio_api::model::Triple {
                     subject: s,
                     predicate: p,
                     object: o,
                 })?;
             } else {
-                // If we can't parse our own data back to Rio types,
-                // we probably shouldn't be using Rio to write it or our data is not strict RDF.
-                // For now, let's just log or ignore?
-                // Or try to write raw?
-                // Since `formatter` owns writer, we can't write raw easily without finishing.
-                // Let's assume we can parse it if we relax parsing or fix data.
-                // Fallback: don't write it?
-                // Let's return error.
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("Could not serialize triple: {:?}", triple),
+                    format!("Could not serialize triple to N-Triples: {:?}", triple),
                 )
                 .into());
             }
@@ -93,67 +89,6 @@ impl NTriples {
         let mut buf = Vec::new();
         Self::write(kg, &mut buf)?;
         Ok(String::from_utf8_lossy(&buf).to_string())
-    }
-}
-
-// Helpers to convert string to Rio types
-fn parse_named_node_str(s: &str) -> Option<NamedNode<'_>> {
-    if s.starts_with("_:") || s.starts_with('"') {
-        return None;
-    }
-    if s.starts_with('<') && s.ends_with('>') {
-        Some(NamedNode {
-            iri: &s[1..s.len() - 1],
-        })
-    } else {
-        Some(NamedNode { iri: s })
-    }
-}
-
-fn parse_term_str(s: &str) -> Option<Subject<'_>> {
-    if s.starts_with("_:") {
-        Some(Subject::BlankNode(rio_api::model::BlankNode {
-            id: &s[2..],
-        }))
-    } else if s.starts_with('"') {
-        None
-    } else if s.starts_with('<') && s.ends_with('>') {
-        Some(Subject::NamedNode(NamedNode {
-            iri: &s[1..s.len() - 1],
-        }))
-    } else {
-        Some(Subject::NamedNode(NamedNode { iri: s }))
-    }
-}
-
-fn parse_term_str_obj(s: &str) -> Option<Term<'_>> {
-    if s.starts_with("_:") {
-        Some(Term::BlankNode(rio_api::model::BlankNode { id: &s[2..] }))
-    } else if s.starts_with('"') {
-        // Very basic literal parsing: assume it's "value" or "value"^^type or "value"@lang
-        // For N-Triples/Turtle roundtrip, we might want to store more precise structure.
-        // For now, just parse the value part if simple.
-        // If it contains ^^ or @, Rio expects us to parse components.
-        // This is getting complicated.
-        // Simplest: Literal::Simple
-        // Warning: This strips type/lang if we just take string inside quotes.
-        // But our `from_ntriples` logic might have kept the full string?
-        // Let's assume we just wrap it as Simple literal for now to make it work.
-        // Proper fix: Store RDF terms in `Entity` enum instead of String.
-        if let Some(end) = s.rfind('"') {
-            if end > 0 {
-                return Some(Term::Literal(rio_api::model::Literal::Simple {
-                    value: &s[1..end],
-                }));
-            }
-        }
-        None
-    } else if s.starts_with('<') && s.ends_with('>') {
-        Some(Term::NamedNode(NamedNode {
-            iri: &s[1..s.len() - 1],
-        }))
-    } else {
-        Some(Term::NamedNode(NamedNode { iri: s }))
     }
 }
 

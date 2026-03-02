@@ -128,6 +128,16 @@ impl KnowledgeGraph {
         }
     }
 
+    /// Remove all entities, triples, and indexes.
+    pub fn clear(&mut self) {
+        self.graph.clear();
+        self.entity_index.clear();
+        self.triples.clear();
+        self.subject_index.clear();
+        self.object_index.clear();
+        self.relation_type_cache.clear();
+    }
+
     /// Rebuild indexes derived from `triples`.
     ///
     /// This is intended for deserialization paths that load `graph` + `triples` but skip

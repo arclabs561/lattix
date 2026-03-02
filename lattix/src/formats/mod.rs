@@ -13,6 +13,7 @@ pub mod csv;
 mod jsonld;
 mod nquads;
 mod ntriples;
+mod rio_helpers;
 mod turtle;
 
 pub use self::csv::Csv;
