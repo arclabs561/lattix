@@ -637,6 +637,123 @@ mod remove_triple_props {
     }
 }
 
+mod format_roundtrip_props {
+    use super::*;
+
+    /// Generate valid IRI strings for entity names.
+    fn iri_string() -> impl Strategy<Value = String> {
+        "[a-zA-Z][a-zA-Z0-9]{1,20}".prop_map(|s| format!("http://example.org/{}", s))
+    }
+
+    /// Generate relation IRIs.
+    fn iri_relation() -> impl Strategy<Value = String> {
+        "[a-z][a-z_]{1,10}".prop_map(|s| format!("http://example.org/{}", s))
+    }
+
+    prop_compose! {
+        fn arb_iri_triple()(
+            subject in iri_string(),
+            predicate in iri_relation(),
+            object in iri_string(),
+        ) -> (String, String, String) {
+            (subject, predicate, object)
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// N-Triples round-trip: serialize then parse back, triple count must match.
+        #[test]
+        fn ntriples_roundtrip(
+            triples in prop::collection::vec(arb_iri_triple(), 1..20),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+            use lattix::formats::NTriples;
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let serialized = NTriples::to_string(&kg).expect("NTriples serialization failed");
+            let recovered = NTriples::parse(&serialized).expect("NTriples parse failed");
+
+            prop_assert_eq!(
+                kg.triple_count(),
+                recovered.triple_count(),
+                "Triple count changed after N-Triples roundtrip: serialized=\n{}",
+                serialized
+            );
+        }
+
+        /// JSON serde round-trip at scale: verify triple_count, entity_count, and
+        /// that relations_from still works (index rebuilt correctly).
+        #[test]
+        fn json_serde_roundtrip_at_scale(
+            triples in prop::collection::vec(arb_iri_triple(), 10..100),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let json = serde_json::to_string(&kg).expect("JSON serialization failed");
+            let recovered: KnowledgeGraph =
+                serde_json::from_str(&json).expect("JSON deserialization failed");
+
+            prop_assert_eq!(
+                kg.triple_count(),
+                recovered.triple_count(),
+                "Triple count changed after JSON roundtrip"
+            );
+            prop_assert_eq!(
+                kg.entity_count(),
+                recovered.entity_count(),
+                "Entity count changed after JSON roundtrip"
+            );
+
+            // Verify relations_from works on the first entity (index rebuilt).
+            let first_subject = &triples[0].0;
+            let original_rels = kg.relations_from(first_subject.as_str());
+            let recovered_rels = recovered.relations_from(first_subject.as_str());
+            prop_assert_eq!(
+                original_rels.len(),
+                recovered_rels.len(),
+                "relations_from count differs for '{}' after JSON roundtrip",
+                first_subject
+            );
+        }
+
+        /// Turtle round-trip: serialize then parse back, triple count must match.
+        #[test]
+        fn turtle_roundtrip(
+            triples in prop::collection::vec(arb_iri_triple(), 1..20),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+            use lattix::formats::Turtle;
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &triples {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            let serialized = Turtle::to_string(&kg).expect("Turtle serialization failed");
+            let recovered = Turtle::read(std::io::Cursor::new(serialized.as_bytes()), None)
+                .expect("Turtle parse failed");
+
+            prop_assert_eq!(
+                kg.triple_count(),
+                recovered.triple_count(),
+                "Triple count changed after Turtle roundtrip: serialized=\n{}",
+                serialized
+            );
+        }
+    }
+}
+
 mod invariant_props {
     use super::*;
 
