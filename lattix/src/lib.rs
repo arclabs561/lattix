@@ -181,6 +181,7 @@ pub mod formats;
 mod graph;
 pub mod hetero;
 pub mod hyper;
+mod query;
 mod relation;
 mod triple;
 
@@ -193,6 +194,7 @@ pub use exchange::{GraphDocument, GraphEdge, GraphExportFormat, GraphNode};
 pub use graph::{KnowledgeGraph, KnowledgeGraphStats};
 pub use hetero::{EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType};
 pub use hyper::{HyperEdge, HyperGraph, HyperTriple, RoleBinding};
+pub use query::TripleQuery;
 pub use relation::{Relation, RelationType};
 pub use triple::Triple;
 
