@@ -2,7 +2,7 @@ use crate::{Entity, EntityId, Relation, RelationType, Result, Triple};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -560,6 +560,24 @@ impl KnowledgeGraph {
         }
     }
 
+    /// Create a query builder for pattern-matching triples.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new("Alice", "knows", "Bob"));
+    /// kg.add_triple(Triple::new("Alice", "works_at", "Acme"));
+    ///
+    /// let results = kg.query().subject("Alice").predicate("knows").execute();
+    /// assert_eq!(results.len(), 1);
+    /// ```
+    pub fn query(&self) -> crate::query::TripleQuery<'_> {
+        crate::query::TripleQuery::new(self)
+    }
+
     /// In-degree of an entity. O(d) where d is in-degree.
     pub fn in_degree(&self, entity: impl Into<EntityId>) -> usize {
         let entity = entity.into();
@@ -602,6 +620,200 @@ impl KnowledgeGraph {
             relation_type_count,
             avg_out_degree,
         }
+    }
+}
+
+// -- Graph composition and extraction operations --
+
+impl KnowledgeGraph {
+    /// Merge all triples from another knowledge graph into this one.
+    ///
+    /// Duplicate triples are not deduplicated (matching existing add_triple behavior).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg1 = KnowledgeGraph::new();
+    /// kg1.add_triple(Triple::new("A", "r", "B"));
+    ///
+    /// let mut kg2 = KnowledgeGraph::new();
+    /// kg2.add_triple(Triple::new("C", "r", "D"));
+    ///
+    /// kg1.merge(&kg2);
+    /// assert_eq!(kg1.triple_count(), 2);
+    /// assert_eq!(kg1.entity_count(), 4);
+    /// ```
+    pub fn merge(&mut self, other: &KnowledgeGraph) {
+        for triple in other.triples() {
+            self.add_triple(triple.clone());
+        }
+    }
+
+    /// Return a new knowledge graph containing triples in `self` but not in `other`.
+    ///
+    /// Comparison is by (subject, predicate, object) — confidence and source are ignored.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg1 = KnowledgeGraph::new();
+    /// kg1.add_triple(Triple::new("A", "r", "B"));
+    /// kg1.add_triple(Triple::new("C", "r", "D"));
+    ///
+    /// let mut kg2 = KnowledgeGraph::new();
+    /// kg2.add_triple(Triple::new("A", "r", "B"));
+    ///
+    /// let diff = kg1.diff(&kg2);
+    /// assert_eq!(diff.triple_count(), 1);
+    /// ```
+    pub fn diff(&self, other: &KnowledgeGraph) -> KnowledgeGraph {
+        let other_set: HashSet<(&str, &str, &str)> = other
+            .triples()
+            .map(|t| (t.subject.as_str(), t.predicate.as_str(), t.object.as_str()))
+            .collect();
+
+        let mut result = KnowledgeGraph::new();
+        for triple in self.triples() {
+            let key = (
+                triple.subject.as_str(),
+                triple.predicate.as_str(),
+                triple.object.as_str(),
+            );
+            if !other_set.contains(&key) {
+                result.add_triple(triple.clone());
+            }
+        }
+        result
+    }
+
+    /// Return a new knowledge graph containing triples present in both `self` and `other`.
+    ///
+    /// Comparison is by (subject, predicate, object) — confidence and source are ignored.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg1 = KnowledgeGraph::new();
+    /// kg1.add_triple(Triple::new("A", "r", "B"));
+    /// kg1.add_triple(Triple::new("C", "r", "D"));
+    ///
+    /// let mut kg2 = KnowledgeGraph::new();
+    /// kg2.add_triple(Triple::new("A", "r", "B"));
+    /// kg2.add_triple(Triple::new("E", "r", "F"));
+    ///
+    /// let common = kg1.intersection(&kg2);
+    /// assert_eq!(common.triple_count(), 1);
+    /// ```
+    pub fn intersection(&self, other: &KnowledgeGraph) -> KnowledgeGraph {
+        let other_set: HashSet<(&str, &str, &str)> = other
+            .triples()
+            .map(|t| (t.subject.as_str(), t.predicate.as_str(), t.object.as_str()))
+            .collect();
+
+        let mut result = KnowledgeGraph::new();
+        for triple in self.triples() {
+            let key = (
+                triple.subject.as_str(),
+                triple.predicate.as_str(),
+                triple.object.as_str(),
+            );
+            if other_set.contains(&key) {
+                result.add_triple(triple.clone());
+            }
+        }
+        result
+    }
+
+    /// Extract a k-hop subgraph around an entity.
+    ///
+    /// Returns a new KnowledgeGraph containing all triples reachable within `depth` hops
+    /// from the given entity (following edges in both directions).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new("A", "r", "B"));
+    /// kg.add_triple(Triple::new("B", "r", "C"));
+    /// kg.add_triple(Triple::new("C", "r", "D"));
+    ///
+    /// let sub = kg.subgraph_around("A", 1);
+    /// assert_eq!(sub.triple_count(), 1); // Only A->B
+    /// assert_eq!(sub.entity_count(), 2);
+    ///
+    /// let sub = kg.subgraph_around("B", 1);
+    /// assert_eq!(sub.triple_count(), 2); // A->B and B->C
+    /// ```
+    pub fn subgraph_around(&self, entity: impl Into<EntityId>, depth: usize) -> KnowledgeGraph {
+        let entity = entity.into();
+        let mut visited: HashSet<EntityId> = HashSet::new();
+        let mut frontier: VecDeque<(EntityId, usize)> = VecDeque::new();
+
+        visited.insert(entity.clone());
+        frontier.push_back((entity, 0));
+
+        // BFS to discover entities within depth hops
+        while let Some((current, d)) = frontier.pop_front() {
+            if d >= depth {
+                continue;
+            }
+
+            // Follow outgoing edges
+            for triple in self.relations_from(current.as_str()) {
+                if visited.insert(triple.object.clone()) {
+                    frontier.push_back((triple.object.clone(), d + 1));
+                }
+            }
+
+            // Follow incoming edges
+            for triple in self.relations_to(current.as_str()) {
+                if visited.insert(triple.subject.clone()) {
+                    frontier.push_back((triple.subject.clone(), d + 1));
+                }
+            }
+        }
+
+        // Collect all triples where both endpoints are in the visited set
+        let mut result = KnowledgeGraph::new();
+        for triple in self.triples() {
+            if visited.contains(&triple.subject) && visited.contains(&triple.object) {
+                result.add_triple(triple.clone());
+            }
+        }
+        result
+    }
+
+    /// Extract a subgraph containing only triples with the given predicates.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lattix::{KnowledgeGraph, Triple};
+    ///
+    /// let mut kg = KnowledgeGraph::new();
+    /// kg.add_triple(Triple::new("A", "knows", "B"));
+    /// kg.add_triple(Triple::new("A", "works_at", "C"));
+    ///
+    /// let sub = kg.subgraph_by_predicates(&["knows"]);
+    /// assert_eq!(sub.triple_count(), 1);
+    /// ```
+    pub fn subgraph_by_predicates(&self, predicates: &[impl AsRef<str>]) -> KnowledgeGraph {
+        let pred_set: HashSet<&str> = predicates.iter().map(|p| p.as_ref()).collect();
+        let mut result = KnowledgeGraph::new();
+        for triple in self.triples() {
+            if pred_set.contains(triple.predicate.as_str()) {
+                result.add_triple(triple.clone());
+            }
+        }
+        result
     }
 }
 
@@ -787,5 +999,193 @@ mod tests {
         assert_eq!(loaded.relation_type_count(), 1);
 
         std::fs::remove_file(path).unwrap();
+    }
+
+    // -- merge tests --
+
+    #[test]
+    fn test_merge_basic() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("C", "r", "D"));
+
+        kg1.merge(&kg2);
+        assert_eq!(kg1.triple_count(), 2);
+        assert_eq!(kg1.entity_count(), 4);
+    }
+
+    #[test]
+    fn test_merge_overlapping_entities() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r1", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("B", "r2", "C"));
+
+        kg1.merge(&kg2);
+        assert_eq!(kg1.triple_count(), 2);
+        assert_eq!(kg1.entity_count(), 3); // A, B, C -- B shared
+    }
+
+    // -- diff tests --
+
+    #[test]
+    fn test_diff_basic() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+        kg1.add_triple(Triple::new("C", "r", "D"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("A", "r", "B"));
+
+        let diff = kg1.diff(&kg2);
+        assert_eq!(diff.triple_count(), 1);
+        assert!(diff.has_edge("C", "D"));
+    }
+
+    #[test]
+    fn test_diff_empty() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("A", "r", "B"));
+
+        let diff = kg1.diff(&kg2);
+        assert_eq!(diff.triple_count(), 0);
+    }
+
+    #[test]
+    fn test_diff_no_overlap() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("C", "r", "D"));
+
+        let diff = kg1.diff(&kg2);
+        assert_eq!(diff.triple_count(), 1);
+        assert!(diff.has_edge("A", "B"));
+    }
+
+    // -- intersection tests --
+
+    #[test]
+    fn test_intersection_basic() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+        kg1.add_triple(Triple::new("C", "r", "D"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("A", "r", "B"));
+        kg2.add_triple(Triple::new("E", "r", "F"));
+
+        let common = kg1.intersection(&kg2);
+        assert_eq!(common.triple_count(), 1);
+        assert!(common.has_edge("A", "B"));
+    }
+
+    #[test]
+    fn test_intersection_empty() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("C", "r", "D"));
+
+        let common = kg1.intersection(&kg2);
+        assert_eq!(common.triple_count(), 0);
+    }
+
+    #[test]
+    fn test_intersection_full_overlap() {
+        let mut kg1 = KnowledgeGraph::new();
+        kg1.add_triple(Triple::new("A", "r", "B"));
+
+        let mut kg2 = KnowledgeGraph::new();
+        kg2.add_triple(Triple::new("A", "r", "B"));
+
+        let common = kg1.intersection(&kg2);
+        assert_eq!(common.triple_count(), 1);
+    }
+
+    // -- subgraph_around tests --
+
+    #[test]
+    fn test_subgraph_around_depth_0() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "r", "B"));
+
+        let sub = kg.subgraph_around("A", 0);
+        assert_eq!(sub.triple_count(), 0); // No hops, no triples
+    }
+
+    #[test]
+    fn test_subgraph_around_depth_1() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "r", "B"));
+        kg.add_triple(Triple::new("B", "r", "C"));
+        kg.add_triple(Triple::new("C", "r", "D"));
+
+        let sub = kg.subgraph_around("A", 1);
+        assert_eq!(sub.triple_count(), 1); // A->B only
+        assert_eq!(sub.entity_count(), 2);
+    }
+
+    #[test]
+    fn test_subgraph_around_depth_2() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "r", "B"));
+        kg.add_triple(Triple::new("B", "r", "C"));
+        kg.add_triple(Triple::new("C", "r", "D"));
+
+        let sub = kg.subgraph_around("A", 2);
+        assert_eq!(sub.triple_count(), 2); // A->B and B->C
+        assert_eq!(sub.entity_count(), 3);
+    }
+
+    #[test]
+    fn test_subgraph_around_nonexistent_entity() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "r", "B"));
+
+        let sub = kg.subgraph_around("Z", 2);
+        assert_eq!(sub.triple_count(), 0);
+        assert_eq!(sub.entity_count(), 0);
+    }
+
+    // -- subgraph_by_predicates tests --
+
+    #[test]
+    fn test_subgraph_by_predicates_single() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "knows", "B"));
+        kg.add_triple(Triple::new("A", "works_at", "C"));
+
+        let sub = kg.subgraph_by_predicates(&["knows"]);
+        assert_eq!(sub.triple_count(), 1);
+        assert!(sub.has_edge("A", "B"));
+    }
+
+    #[test]
+    fn test_subgraph_by_predicates_multiple() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "knows", "B"));
+        kg.add_triple(Triple::new("A", "works_at", "C"));
+        kg.add_triple(Triple::new("B", "lives_in", "D"));
+
+        let sub = kg.subgraph_by_predicates(&["knows", "lives_in"]);
+        assert_eq!(sub.triple_count(), 2);
+    }
+
+    #[test]
+    fn test_subgraph_by_predicates_no_matches() {
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("A", "knows", "B"));
+
+        let sub = kg.subgraph_by_predicates(&["nonexistent"]);
+        assert_eq!(sub.triple_count(), 0);
     }
 }
