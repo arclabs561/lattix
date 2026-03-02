@@ -188,10 +188,12 @@
 //! assert_eq!(apple_relations.len(), 2);
 //! ```
 
+#[cfg(feature = "algo")]
 pub mod algo;
 mod entity;
 mod error;
 pub mod exchange;
+#[cfg(feature = "formats")]
 pub mod formats;
 mod graph;
 pub mod hetero;
