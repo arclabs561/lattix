@@ -40,9 +40,8 @@ impl Turtle {
                     Subject::Triple(t) => format!("{}", t),
                 };
 
-                let p_str = match triple.predicate {
-                    NamedNode { iri } => iri.to_string(),
-                };
+                let NamedNode { iri } = triple.predicate;
+                let p_str = iri.to_string();
 
                 let o_str = match triple.object {
                     Term::NamedNode(n) => n.iri.to_string(),

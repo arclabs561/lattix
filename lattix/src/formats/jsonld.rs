@@ -140,7 +140,7 @@ impl JsonLd {
     }
 
     /// Parse from string.
-    pub fn from_str(s: &str) -> Result<KnowledgeGraph> {
+    pub fn parse(s: &str) -> Result<KnowledgeGraph> {
         let doc: Value = serde_json::from_str(s)?;
         Self::from_value(&doc)
     }
@@ -161,7 +161,7 @@ mod tests {
         ));
 
         let json = JsonLd::to_string(&kg).unwrap();
-        let parsed = JsonLd::from_str(&json).unwrap();
+        let parsed = JsonLd::parse(&json).unwrap();
 
         assert_eq!(parsed.triple_count(), 1);
     }

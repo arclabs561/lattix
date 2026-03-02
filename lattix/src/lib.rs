@@ -1,22 +1,4 @@
-// Allow minor clippy style warnings at crate level
-// These are mostly style preferences, not bugs
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![allow(unused_results)]
-#![allow(clippy::must_use_candidate)]
-#![allow(clippy::return_self_not_must_use)]
-#![allow(clippy::derive_partial_eq_without_eq)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::missing_errors_doc)]
-#![allow(clippy::doc_markdown)]
-#![allow(clippy::cast_precision_loss)]
-#![allow(clippy::option_if_let_else)]
-#![allow(clippy::should_implement_trait)]
-#![allow(clippy::missing_const_for_fn)]
-#![allow(clippy::uninlined_format_args)]
-#![allow(clippy::unwrap_or_default)]
-#![allow(clippy::match_single_binding)]
-#![allow(clippy::manual_strip)]
-#![allow(clippy::items_after_statements)]
 
 //! Knowledge graph substrate: core types, algorithms, and formats.
 //!

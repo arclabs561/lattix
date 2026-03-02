@@ -182,7 +182,7 @@ impl KnowledgeGraph {
         Ok(kg)
     }
 
-    /// Load from JSON adjacency list file (decksage format).
+    /// Load from JSON adjacency list file.
     pub fn from_json_adjacency_file(path: impl AsRef<Path>) -> Result<Self> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);

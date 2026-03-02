@@ -30,9 +30,8 @@ impl NTriples {
                     Subject::Triple(t) => format!("{}", t),
                 };
 
-                let p_str = match triple.predicate {
-                    NamedNode { iri } => iri.to_string(),
-                };
+                let NamedNode { iri } = triple.predicate;
+                let p_str = iri.to_string();
 
                 let o_str = match triple.object {
                     Term::NamedNode(n) => n.iri.to_string(),
@@ -80,7 +79,7 @@ impl NTriples {
     }
 
     /// Parse from string.
-    pub fn from_str(s: &str) -> Result<KnowledgeGraph> {
+    pub fn parse(s: &str) -> Result<KnowledgeGraph> {
         Self::read(std::io::Cursor::new(s))
     }
 
@@ -101,7 +100,7 @@ mod tests {
         let input = r#"<http://example.org/Apple> <http://example.org/founded_by> <http://example.org/Steve_Jobs> .
 <http://example.org/Apple> <http://example.org/type> <http://example.org/Company> .
 "#;
-        let kg = NTriples::from_str(input).unwrap();
+        let kg = NTriples::parse(input).unwrap();
         assert_eq!(kg.triple_count(), 2);
 
         let output = NTriples::to_string(&kg).unwrap();

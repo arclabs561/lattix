@@ -20,8 +20,8 @@ pub(crate) fn to_named_node(s: &str) -> Option<NamedNode<'_>> {
 
 /// Parse a string as a `Subject` (named node or blank node). Returns `None` for literals.
 pub(crate) fn to_subject(s: &str) -> Option<Subject<'_>> {
-    if s.starts_with("_:") {
-        Some(Subject::BlankNode(BlankNode { id: &s[2..] }))
+    if let Some(id) = s.strip_prefix("_:") {
+        Some(Subject::BlankNode(BlankNode { id }))
     } else if s.starts_with('"') {
         None
     } else if s.starts_with('<') && s.ends_with('>') {
@@ -35,8 +35,8 @@ pub(crate) fn to_subject(s: &str) -> Option<Subject<'_>> {
 
 /// Parse a string as a `Term` (named node, blank node, or literal) in the object position.
 pub(crate) fn to_object(s: &str) -> Option<Term<'_>> {
-    if s.starts_with("_:") {
-        Some(Term::BlankNode(BlankNode { id: &s[2..] }))
+    if let Some(id) = s.strip_prefix("_:") {
+        Some(Term::BlankNode(BlankNode { id }))
     } else if s.starts_with('"') {
         // Simple literal: extract the value between the first and last quote.
         // This handles plain `"value"` and is a best-effort fallback for

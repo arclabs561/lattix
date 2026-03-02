@@ -231,7 +231,7 @@ impl HeteroGraph {
     pub fn add_node(&mut self, node_type: NodeType, id: impl Into<String>) -> TypedNodeIndex {
         self.node_stores
             .entry(node_type)
-            .or_insert_with(NodeStore::new)
+            .or_default()
             .add_node(id)
     }
 
@@ -246,7 +246,7 @@ impl HeteroGraph {
         // Add edge
         self.edge_stores
             .entry(edge_type.clone())
-            .or_insert_with(EdgeStore::new)
+            .or_default()
             .add_edge(src_idx, dst_idx);
     }
 

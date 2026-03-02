@@ -138,7 +138,7 @@ impl NQuads {
             if let Ok(quad) = Quad::from_nquads(line) {
                 graphs
                     .entry(quad.graph.clone())
-                    .or_insert_with(KnowledgeGraph::new)
+                    .or_default()
                     .add_triple(quad.triple);
             }
         }
