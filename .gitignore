@@ -7,3 +7,4 @@ Cargo.lock
 *.bin
 .cargo/
 .cursor/
+qa/reports/

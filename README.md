@@ -1,6 +1,6 @@
 # lattix
 
-Knowledge graph **substrate**: core types + basic algorithms + formats.
+Knowledge graph **substrate**: core types + algorithms + formats.
 
 Dual-licensed under MIT or Apache-2.0.
 
@@ -9,6 +9,12 @@ use lattix::{KnowledgeGraph, Triple};
 
 let mut kg = KnowledgeGraph::new();
 kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
+kg.add_triple(Triple::new("Apple", "headquartered_in", "Cupertino"));
+kg.add_triple(Triple::new("Steve Jobs", "born_in", "San Francisco"));
+
+// Query relations
+let apple_rels = kg.relations_from("Apple");
+assert_eq!(apple_rels.len(), 2);
 
 // Find path: Apple -> founded_by -> Steve Jobs
 if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
@@ -16,32 +22,32 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 }
 ```
 
-## Crates
+## What it does
 
-| Crate | Purpose |
-|-------|---------|
-| `lattix` | **Primary crate** (preferred import); minimal by default, opt-in features for algorithms/formats |
-| `lattix-core` | Implementation crate used by `lattix`; **not** intended as a direct dependency |
+`lattix` provides the types and algorithms for working with knowledge graphs:
 
-## Why this exists
+- **Triples**: `(subject, predicate, object)` -- the atomic unit of knowledge
+- **Homogeneous graphs**: `KnowledgeGraph` wraps petgraph for traversal, path-finding, and centrality
+- **Heterogeneous graphs**: `HeteroGraph` with typed nodes and edges (for RGCN, HGT, link prediction)
+- **Hypergraphs**: `HyperTriple` (qualifier-based, Wikidata-style) and `HyperEdge` (role-based n-ary relations)
+- **Algorithms**: PageRank, HITS, degree/betweenness/closeness/eigenvector/Katz centrality, random walks, connected components, neighbor sampling
+- **Formats**: N-Triples, N-Quads, Turtle, JSON-LD, CSV (all opt-in via `formats` feature)
 
-`lattix` is meant to be the small, stable layer you can build higher-level systems on:
+## Features
 
-- **Substrate-first**: triples + graph storage + a few basic algorithms (PageRank, random walks) with predictable behavior.
-- **Format boundaries**: parsing/serialization as opt-in features so dependents can stay lean.
-- **Interop**: designed to be a dependency of higher-level KG/graph learning systems (see `webs/*`).
+| Feature | Default | What it enables |
+|---------|---------|-----------------|
+| `formats` | yes | RDF parsing/serialization (N-Triples, Turtle, N-Quads, JSON-LD, CSV) |
+| `algo` | yes | Centrality algorithms, PageRank, random walks, sampling (pulls in `rand`, `rayon`) |
+| `binary` | no | Bincode serialization |
+| `sophia` | no | Sophia RDF framework integration |
 
-## Best starting points
+Minimal dependency footprint: `cargo add lattix --no-default-features` gives you just core types + petgraph + serde.
 
-- **Core types**: `KnowledgeGraph`, `Triple`
-- **Basic traversal**: `KnowledgeGraph::find_path`
-- **When you want ML / training / temporal systems**: start in `webs/*` (not here)
+## Starting points
 
-## Embedding Backends
-
-These backends and training/inference systems live in separate crates. `lattix` stays substrate-only.
-
-## Relationship to `webs`
-
-`webs/*` is the home for higher-level KG systems (reasoning, training/inference, temporal systems, CLI).
-It depends on this repo’s substrate (`lattix`).
+- **Core types**: [`KnowledgeGraph`](https://docs.rs/lattix/latest/lattix/struct.KnowledgeGraph.html), [`Triple`](https://docs.rs/lattix/latest/lattix/struct.Triple.html)
+- **Typed graphs**: [`HeteroGraph`](https://docs.rs/lattix/latest/lattix/hetero/struct.HeteroGraph.html)
+- **N-ary relations**: [`HyperTriple`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperTriple.html), [`HyperEdge`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperEdge.html)
+- **Algorithms**: [`algo::pagerank`](https://docs.rs/lattix/latest/lattix/algo/pagerank/index.html), [`algo::centrality`](https://docs.rs/lattix/latest/lattix/algo/centrality/index.html)
+- **Examples**: `cargo run --example pagerank_demo`, `cargo run --example triples`
