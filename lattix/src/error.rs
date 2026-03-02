@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-/// Error type for lattice operations.
+/// Error type for lattix operations.
 #[derive(Error, Debug)]
 pub enum Error {
     /// Triple parsing error.
@@ -26,5 +26,5 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
-/// Result type for lattice operations.
+/// Result type for lattix operations.
 pub type Result<T> = std::result::Result<T, Error>;
