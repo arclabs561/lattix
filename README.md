@@ -1,8 +1,10 @@
 # lattix
 
-Knowledge graph **substrate**: core types + algorithms + formats.
+[![crates.io](https://img.shields.io/crates/v/lattix.svg)](https://crates.io/crates/lattix)
+[![Documentation](https://docs.rs/lattix/badge.svg)](https://docs.rs/lattix)
+[![CI](https://github.com/arclabs561/lattix/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/lattix/actions/workflows/ci.yml)
 
-Dual-licensed under MIT or Apache-2.0.
+Knowledge graph substrate: core types, algorithms, and formats.
 
 ```rust
 use lattix::{KnowledgeGraph, Triple};
@@ -51,3 +53,7 @@ Minimal dependency footprint: `cargo add lattix --no-default-features` gives you
 - **N-ary relations**: [`HyperTriple`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperTriple.html), [`HyperEdge`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperEdge.html)
 - **Algorithms**: [`algo::pagerank`](https://docs.rs/lattix/latest/lattix/algo/pagerank/index.html), [`algo::centrality`](https://docs.rs/lattix/latest/lattix/algo/centrality/index.html)
 - **Examples**: `cargo run --example pagerank_demo`, `cargo run --example triples`
+
+## License
+
+MIT OR Apache-2.0
