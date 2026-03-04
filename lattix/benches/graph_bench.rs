@@ -28,7 +28,9 @@ fn make_random(n: usize, avg_degree: usize, seed: u64) -> KnowledgeGraph {
     // Simple deterministic LCG (no dep on rand for bench helpers)
     let mut state = seed;
     let next = |s: &mut u64| -> u64 {
-        *s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        *s = s
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         *s >> 33
     };
 
@@ -140,13 +142,7 @@ fn bench_insertion(c: &mut Criterion) {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_with_input(BenchmarkId::new("insert_batch", n), &n, |b, &n| {
             let triples: Vec<Triple> = (0..n)
-                .map(|i| {
-                    Triple::new(
-                        format!("s_{i}").as_str(),
-                        "rel",
-                        format!("o_{i}").as_str(),
-                    )
-                })
+                .map(|i| Triple::new(format!("s_{i}").as_str(), "rel", format!("o_{i}").as_str()))
                 .collect();
 
             b.iter_batched(
@@ -219,10 +215,8 @@ fn bench_centrality(c: &mut Criterion) {
     group.sample_size(50);
 
     // Pre-build graphs outside the benchmark loop
-    let graphs: Vec<(usize, KnowledgeGraph)> = SIZES
-        .iter()
-        .map(|&n| (n, make_random(n, 6, 42)))
-        .collect();
+    let graphs: Vec<(usize, KnowledgeGraph)> =
+        SIZES.iter().map(|&n| (n, make_random(n, 6, 42))).collect();
 
     // Degree centrality: all sizes
     for (n, kg) in &graphs {

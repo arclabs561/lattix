@@ -96,7 +96,8 @@ pub fn label_propagation(
     }
 
     let adapter = AdjList(adj);
-    let labels = graphops::partition::label_propagation(&adapter, config.max_iterations, config.seed);
+    let labels =
+        graphops::partition::label_propagation(&adapter, config.max_iterations, config.seed);
 
     // Map indices back to entity IDs
     let mut result = HashMap::with_capacity(n);

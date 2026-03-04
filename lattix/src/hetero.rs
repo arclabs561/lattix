@@ -267,10 +267,7 @@ impl HeteroGraph {
 
     /// Add a node of the given type.
     pub fn add_node(&mut self, node_type: NodeType, id: impl Into<String>) -> TypedNodeIndex {
-        self.node_stores
-            .entry(node_type)
-            .or_default()
-            .add_node(id)
+        self.node_stores.entry(node_type).or_default().add_node(id)
     }
 
     /// Add an edge of the given type.
@@ -371,11 +368,7 @@ impl HeteroGraph {
     }
 
     /// Get neighbors by string IDs, returning destination node IDs.
-    pub fn neighbors_by_id<'a>(
-        &'a self,
-        edge_type: &EdgeType,
-        src_id: &str,
-    ) -> Vec<&'a str> {
+    pub fn neighbors_by_id<'a>(&'a self, edge_type: &EdgeType, src_id: &str) -> Vec<&'a str> {
         let src_idx = match self.get_node_index(&edge_type.src_type, src_id) {
             Some(idx) => idx,
             None => return Vec::new(),

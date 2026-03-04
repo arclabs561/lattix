@@ -65,10 +65,7 @@ use std::collections::HashMap;
 /// ```
 #[must_use]
 pub fn top_n(scores: &HashMap<String, f64>, n: usize) -> Vec<(String, f64)> {
-    let mut entries: Vec<(String, f64)> = scores
-        .iter()
-        .map(|(k, &v)| (k.clone(), v))
-        .collect();
+    let mut entries: Vec<(String, f64)> = scores.iter().map(|(k, &v)| (k.clone(), v)).collect();
     entries.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     entries.truncate(n);
     entries

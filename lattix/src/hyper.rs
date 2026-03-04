@@ -545,12 +545,10 @@ mod tests {
                 .with_qualifier("year", "1921"),
         );
         hg.add_hyper_triple(
-            HyperTriple::from_parts("Curie", "won", "Nobel Prize")
-                .with_qualifier("year", "1903"),
+            HyperTriple::from_parts("Curie", "won", "Nobel Prize").with_qualifier("year", "1903"),
         );
         hg.add_hyper_triple(
-            HyperTriple::from_parts("Bohr", "won", "Nobel Prize")
-                .with_qualifier("year", "1922"),
+            HyperTriple::from_parts("Bohr", "won", "Nobel Prize").with_qualifier("year", "1922"),
         );
 
         let results = hg.find_by_qualifier("year", "1921");
@@ -599,8 +597,7 @@ mod tests {
                 .with_qualifier("degree", "PhD"),
         );
         hg.add_hyper_triple(
-            HyperTriple::from_parts("Curie", "won", "Nobel Prize")
-                .with_qualifier("year", "1903"),
+            HyperTriple::from_parts("Curie", "won", "Nobel Prize").with_qualifier("year", "1903"),
         );
 
         let results = hg.hyper_triples_for_subject("Einstein");

@@ -50,10 +50,7 @@ fn str_to_term(s: &str) -> SimpleTerm<'_> {
                 )
             } else if let Some(dt) = rest.strip_prefix("^^<") {
                 let dt = dt.trim_end_matches('>');
-                SimpleTerm::LiteralDatatype(
-                    lexical.into(),
-                    IriRef::new_unchecked(dt.into()),
-                )
+                SimpleTerm::LiteralDatatype(lexical.into(), IriRef::new_unchecked(dt.into()))
             } else {
                 // Plain string literal
                 SimpleTerm::LiteralDatatype(
@@ -80,11 +77,10 @@ fn term_to_string(t: impl Term) -> String {
         sophia_api::term::TermKind::Iri => {
             t.iri().map(|i| i.as_str().to_string()).unwrap_or_default()
         }
-        sophia_api::term::TermKind::BlankNode => {
-            t.bnode_id()
-                .map(|b| format!("_:{}", b.as_str()))
-                .unwrap_or_default()
-        }
+        sophia_api::term::TermKind::BlankNode => t
+            .bnode_id()
+            .map(|b| format!("_:{}", b.as_str()))
+            .unwrap_or_default(),
         sophia_api::term::TermKind::Literal => {
             let lex = t.lexical_form().unwrap_or_else(|| "".into());
             if let Some(lang) = t.language_tag() {
@@ -95,11 +91,10 @@ fn term_to_string(t: impl Term) -> String {
                 format!("\"{}\"", lex)
             }
         }
-        sophia_api::term::TermKind::Variable => {
-            t.variable()
-                .map(|v| format!("?{}", v.as_str()))
-                .unwrap_or_default()
-        }
+        sophia_api::term::TermKind::Variable => t
+            .variable()
+            .map(|v| format!("?{}", v.as_str()))
+            .unwrap_or_default(),
         sophia_api::term::TermKind::Triple => {
             // Quoted triples: not directly supported in lattix storage.
             // Fall back to a debug representation.

@@ -285,12 +285,13 @@ impl KnowledgeGraph {
         object: &EntityId,
     ) -> bool {
         // Find the triple index
-        let triple_idx = match self.triples.iter().position(|t| {
-            t.subject == *subject && t.predicate == *predicate && t.object == *object
-        }) {
-            Some(idx) => idx,
-            None => return false,
-        };
+        let triple_idx =
+            match self.triples.iter().position(|t| {
+                t.subject == *subject && t.predicate == *predicate && t.object == *object
+            }) {
+                Some(idx) => idx,
+                None => return false,
+            };
 
         let removed = self.triples.swap_remove(triple_idx);
 
@@ -939,11 +940,7 @@ mod tests {
         assert_eq!(kg.triple_count(), 3);
 
         // Remove existing triple
-        let removed = kg.remove_triple(
-            &"Apple".into(),
-            &"founded_by".into(),
-            &"Steve Jobs".into(),
-        );
+        let removed = kg.remove_triple(&"Apple".into(), &"founded_by".into(), &"Steve Jobs".into());
         assert!(removed);
         assert_eq!(kg.triple_count(), 2);
 
@@ -956,11 +953,8 @@ mod tests {
         assert_eq!(apple_rels[0].predicate.as_str(), "headquartered_in");
 
         // Removing nonexistent triple returns false
-        let not_removed = kg.remove_triple(
-            &"Apple".into(),
-            &"founded_by".into(),
-            &"Steve Jobs".into(),
-        );
+        let not_removed =
+            kg.remove_triple(&"Apple".into(), &"founded_by".into(), &"Steve Jobs".into());
         assert!(!not_removed);
         assert_eq!(kg.triple_count(), 2);
     }
@@ -977,7 +971,11 @@ mod tests {
         assert_eq!(kg.relation_type_count(), 1);
 
         // rel2 should still be there
-        let types: Vec<_> = kg.relation_types().iter().map(|r| r.as_str().to_string()).collect();
+        let types: Vec<_> = kg
+            .relation_types()
+            .iter()
+            .map(|r| r.as_str().to_string())
+            .collect();
         assert!(types.contains(&"rel2".to_string()));
     }
 

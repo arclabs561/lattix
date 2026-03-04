@@ -77,10 +77,7 @@ impl<'a> TripleQuery<'a> {
             return self.kg.triples().collect();
         };
 
-        candidates
-            .into_iter()
-            .filter(|t| self.matches(t))
-            .collect()
+        candidates.into_iter().filter(|t| self.matches(t)).collect()
     }
 
     /// Count matching triples without collecting them.

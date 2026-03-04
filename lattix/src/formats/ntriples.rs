@@ -138,8 +138,7 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let input =
-            "<http://example.org/s> <http://example.org/p> \"hello\"@en .\n";
+        let input = "<http://example.org/s> <http://example.org/p> \"hello\"@en .\n";
         let kg = NTriples::parse(input).unwrap();
         let triple = kg.triples().next().unwrap();
         assert_eq!(triple.object.as_str(), "\"hello\"@en");

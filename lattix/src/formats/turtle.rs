@@ -193,11 +193,7 @@ ex:Apple ex:founded_by ex:Steve_Jobs .
 @base <http://example.org/> .
 <Apple> <founded_by> <Steve_Jobs> .
 "#;
-        let kg = Turtle::read(
-            std::io::Cursor::new(input),
-            Some("http://example.org/"),
-        )
-        .unwrap();
+        let kg = Turtle::read(std::io::Cursor::new(input), Some("http://example.org/")).unwrap();
         assert_eq!(kg.triple_count(), 1);
     }
 }
