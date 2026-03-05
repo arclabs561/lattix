@@ -50,7 +50,7 @@ pub fn strongly_connected_components(kg: &KnowledgeGraph) -> Vec<Vec<String>> {
         .map(|component| {
             component
                 .into_iter()
-                .map(|idx| graph[idx].id.0.clone())
+                .map(|idx| graph[idx].id.as_str().to_owned())
                 .collect()
         })
         .collect()
@@ -89,7 +89,7 @@ pub fn weakly_connected_components(kg: &KnowledgeGraph) -> Vec<Vec<String>> {
         components
             .entry(root)
             .or_default()
-            .push(graph[node].id.0.clone());
+            .push(graph[node].id.as_str().to_owned());
     }
 
     components.into_values().collect()

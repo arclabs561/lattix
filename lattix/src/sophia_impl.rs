@@ -110,9 +110,9 @@ impl Graph for KnowledgeGraph {
     fn triples(&self) -> GTripleSource<'_, Self> {
         Box::new(self.triples().map(|t| {
             Ok([
-                str_to_term(t.subject.as_str()),
-                str_to_term(t.predicate.as_str()),
-                str_to_term(t.object.as_str()),
+                str_to_term(t.subject().as_str()),
+                str_to_term(t.predicate().as_str()),
+                str_to_term(t.object().as_str()),
             ])
         }))
     }

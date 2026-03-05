@@ -30,19 +30,19 @@ fn main() {
     // Query: all relations from "Rust"
     println!("\n=== Relations from 'Rust' ===");
     for t in kg.relations_from("Rust") {
-        println!("  {} --[{}]--> {}", t.subject, t.predicate, t.object);
+        println!("  {} --[{}]--> {}", t.subject(), t.predicate(), t.object());
     }
 
     // Query: what is influenced by "ML"?
     println!("\n=== Influenced by 'ML' ===");
     for t in kg.relations_to("ML") {
-        println!("  {} --[{}]--> ML", t.subject, t.predicate);
+        println!("  {} --[{}]--> ML", t.subject(), t.predicate());
     }
 
     // Query: all "paradigm" relations
     println!("\n=== All 'paradigm' relations ===");
     for t in kg.triples_with_relation("paradigm") {
-        println!("  {} => {}", t.subject, t.object);
+        println!("  {} => {}", t.subject(), t.object());
     }
 
     // Find path: Rust -> ML (should exist via influenced_by)
@@ -50,7 +50,7 @@ fn main() {
         println!("\n=== Path: Rust -> ML ===");
         println!("  hops: {}", path.len());
         for t in &path {
-            println!("  {} --[{}]--> {}", t.subject, t.predicate, t.object);
+            println!("  {} --[{}]--> {}", t.subject(), t.predicate(), t.object());
         }
     }
 }

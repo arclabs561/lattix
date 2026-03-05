@@ -160,7 +160,7 @@ pub fn eigenvector_centrality(
     // Map to entity IDs
     graph
         .node_indices()
-        .map(|idx| (graph[idx].id.0.clone(), scores[idx.index()]))
+        .map(|idx| (graph[idx].id.as_str().to_owned(), scores[idx.index()]))
         .collect()
 }
 

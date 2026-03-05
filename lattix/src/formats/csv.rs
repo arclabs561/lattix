@@ -76,7 +76,7 @@ mod tests {
 
         let from_alice = kg.relations_from("Alice");
         assert_eq!(from_alice.len(), 1);
-        assert_eq!(from_alice[0].predicate.as_str(), "knows");
+        assert_eq!(from_alice[0].predicate().as_str(), "knows");
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(kg.triple_count(), 2);
 
         let from_alice = kg.relations_from("Alice");
-        assert_eq!(from_alice[0].predicate.as_str(), "related_to");
+        assert_eq!(from_alice[0].predicate().as_str(), "related_to");
     }
 
     #[test]

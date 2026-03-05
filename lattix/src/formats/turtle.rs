@@ -94,7 +94,7 @@ impl Turtle {
             std::collections::HashMap::new();
         for triple in kg.triples() {
             by_subject
-                .entry(triple.subject.as_str())
+                .entry(triple.subject().as_str())
                 .or_default()
                 .push(triple);
         }
@@ -107,8 +107,8 @@ impl Turtle {
             };
 
             for (i, triple) in triples.iter().enumerate() {
-                let p = format!("<{}>", triple.predicate.as_str());
-                let obj = triple.object.as_str();
+                let p = format!("<{}>", triple.predicate().as_str());
+                let obj = triple.object().as_str();
                 let o = if obj.starts_with("_:") || obj.starts_with('"') {
                     obj.to_string()
                 } else {
@@ -169,9 +169,9 @@ ex:Apple ex:founded_by ex:Steve_Jobs .
         let kg = Turtle::read(std::io::Cursor::new(input), None).unwrap();
         assert_eq!(kg.triple_count(), 1);
         let triple = kg.triples().next().unwrap();
-        assert_eq!(triple.subject.as_str(), "http://example.org/Apple");
-        assert_eq!(triple.predicate.as_str(), "http://example.org/founded_by");
-        assert_eq!(triple.object.as_str(), "http://example.org/Steve_Jobs");
+        assert_eq!(triple.subject().as_str(), "http://example.org/Apple");
+        assert_eq!(triple.predicate().as_str(), "http://example.org/founded_by");
+        assert_eq!(triple.object().as_str(), "http://example.org/Steve_Jobs");
     }
 
     #[test]

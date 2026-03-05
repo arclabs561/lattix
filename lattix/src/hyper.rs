@@ -124,8 +124,8 @@ impl HyperTriple {
 
     /// Iterate over all entities in this hyper-triple.
     pub fn entities(&self) -> impl Iterator<Item = &EntityId> {
-        std::iter::once(&self.core.subject)
-            .chain(std::iter::once(&self.core.object))
+        std::iter::once(self.core.subject())
+            .chain(std::iter::once(self.core.object()))
             .chain(self.qualifiers.values())
     }
 }
@@ -336,8 +336,8 @@ impl HyperGraph {
         let mut entities = std::collections::HashSet::new();
 
         for t in &self.triples {
-            entities.insert(&t.subject);
-            entities.insert(&t.object);
+            entities.insert(t.subject());
+            entities.insert(t.object());
         }
 
         for ht in &self.hyper_triples {
@@ -384,8 +384,8 @@ impl HyperGraph {
         self.hyper_triples
             .iter()
             .filter(|ht| {
-                ht.core.subject.as_str() == entity
-                    || ht.core.object.as_str() == entity
+                ht.core.subject().as_str() == entity
+                    || ht.core.object().as_str() == entity
                     || ht.qualifiers.values().any(|v| v.as_str() == entity)
             })
             .collect()
@@ -395,7 +395,7 @@ impl HyperGraph {
     pub fn hyper_triples_for_subject(&self, subject: &str) -> Vec<&HyperTriple> {
         self.hyper_triples
             .iter()
-            .filter(|ht| ht.core.subject.as_str() == subject)
+            .filter(|ht| ht.core.subject().as_str() == subject)
             .collect()
     }
 
@@ -479,7 +479,7 @@ mod tests {
         assert_eq!(reified.len(), 4);
 
         // First triple is the type
-        assert_eq!(reified[0].predicate.as_str(), "rdf:type");
+        assert_eq!(reified[0].predicate().as_str(), "rdf:type");
     }
 
     #[test]
@@ -569,7 +569,7 @@ mod tests {
 
         let results = hg.find_by_qualifier("year", "1921");
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].core.subject.as_str(), "Einstein");
+        assert_eq!(results[0].core.subject().as_str(), "Einstein");
 
         let empty = hg.find_by_qualifier("year", "2000");
         assert!(empty.is_empty());
@@ -598,7 +598,7 @@ mod tests {
         // Chemistry appears as qualifier value
         let results = hg.find_by_entity("Chemistry");
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].core.subject.as_str(), "Curie");
+        assert_eq!(results[0].core.subject().as_str(), "Curie");
     }
 
     #[test]

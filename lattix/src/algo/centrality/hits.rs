@@ -202,7 +202,7 @@ pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<String, HitsScor
         .map(|idx| {
             let i = idx.index();
             (
-                graph[idx].id.0.clone(),
+                graph[idx].id.as_str().to_owned(),
                 HitsScores {
                     hub: hub[i],
                     authority: auth[i],

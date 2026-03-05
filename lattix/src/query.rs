@@ -92,17 +92,17 @@ impl<'a> TripleQuery<'a> {
 
     fn matches(&self, t: &Triple) -> bool {
         if let Some(ref s) = self.subject {
-            if t.subject != *s {
+            if *t.subject() != *s {
                 return false;
             }
         }
         if let Some(ref p) = self.predicate {
-            if t.predicate != *p {
+            if *t.predicate() != *p {
                 return false;
             }
         }
         if let Some(ref o) = self.object {
-            if t.object != *o {
+            if *t.object() != *o {
                 return false;
             }
         }
@@ -149,7 +149,7 @@ mod tests {
         let kg = sample_kg();
         let results = kg.query().subject("Alice").predicate("knows").execute();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].object.as_str(), "Bob");
+        assert_eq!(results[0].object().as_str(), "Bob");
     }
 
     #[test]
@@ -157,7 +157,7 @@ mod tests {
         let kg = sample_kg();
         let results = kg.query().subject("Alice").object("Bob").execute();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].predicate.as_str(), "knows");
+        assert_eq!(results[0].predicate().as_str(), "knows");
     }
 
     #[test]

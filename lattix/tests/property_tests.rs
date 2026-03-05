@@ -44,9 +44,9 @@ mod triple_props {
             );
 
             let parsed = parsed.unwrap();
-            prop_assert_eq!(original.subject, parsed.subject);
-            prop_assert_eq!(original.predicate, parsed.predicate);
-            prop_assert_eq!(original.object, parsed.object);
+            prop_assert_eq!(original.subject(), parsed.subject());
+            prop_assert_eq!(original.predicate(), parsed.predicate());
+            prop_assert_eq!(original.object(), parsed.object());
         }
 
         #[test]
@@ -61,7 +61,7 @@ mod triple_props {
             let triple = Triple::new(subject.as_str(), predicate.as_str(), object.as_str())
                 .with_confidence(confidence);
 
-            let actual = triple.confidence.unwrap();
+            let actual = triple.confidence().unwrap();
             prop_assert!(
                 (0.0..=1.0).contains(&actual),
                 "Confidence {} not in [0,1], input was {}",
@@ -207,7 +207,7 @@ mod graph_props {
             let relations = kg.relations_from(subject.as_str());
 
             prop_assert!(
-                relations.iter().any(|t| t.object.as_str() == object && t.predicate.as_str() == predicate),
+                relations.iter().any(|t| t.object().as_str() == object && t.predicate().as_str() == predicate),
                 "Added triple not found in relations_from"
             );
         }
@@ -226,7 +226,7 @@ mod graph_props {
             let relations = kg.relations_to(object.as_str());
 
             prop_assert!(
-                relations.iter().any(|t| t.subject.as_str() == subject && t.predicate.as_str() == predicate),
+                relations.iter().any(|t| t.subject().as_str() == subject && t.predicate().as_str() == predicate),
                 "Added triple not found in relations_to"
             );
         }
@@ -371,7 +371,7 @@ mod stress_props {
             for (subject, objects) in &expected_relations {
                 let actual_objects: HashSet<_> = kg.relations_from(subject.as_str())
                     .iter()
-                    .map(|t| t.object.as_str().to_string())
+                    .map(|t| t.object().as_str().to_string())
                     .collect();
 
                 for expected_obj in objects {
@@ -619,16 +619,16 @@ mod remove_triple_props {
 
             // Verify bidirectional consistency for all remaining triples
             for triple in kg.triples() {
-                let from_rels = kg.relations_from(triple.subject.as_str());
+                let from_rels = kg.relations_from(triple.subject().as_str());
                 prop_assert!(
-                    from_rels.iter().any(|t| t.predicate == triple.predicate && t.object == triple.object),
+                    from_rels.iter().any(|t| *t.predicate() == *triple.predicate() && *t.object() == *triple.object()),
                     "Triple {:?} not found via relations_from",
                     triple
                 );
 
-                let to_rels = kg.relations_to(triple.object.as_str());
+                let to_rels = kg.relations_to(triple.object().as_str());
                 prop_assert!(
-                    to_rels.iter().any(|t| t.predicate == triple.predicate && t.subject == triple.subject),
+                    to_rels.iter().any(|t| *t.predicate() == *triple.predicate() && *t.subject() == *triple.subject()),
                     "Triple {:?} not found via relations_to",
                     triple
                 );
@@ -820,14 +820,14 @@ mod invariant_props {
             // Every triple's subject and object should be retrievable
             for triple in kg.triples() {
                 prop_assert!(
-                    kg.get_entity(&triple.subject).is_some(),
+                    kg.get_entity(triple.subject()).is_some(),
                     "Triple subject {} not in entity index",
-                    triple.subject
+                    triple.subject()
                 );
                 prop_assert!(
-                    kg.get_entity(&triple.object).is_some(),
+                    kg.get_entity(triple.object()).is_some(),
                     "Triple object {} not in entity index",
-                    triple.object
+                    triple.object()
                 );
             }
         }
@@ -851,14 +851,14 @@ mod invariant_props {
                 // Outgoing: relations_from(entity) -> objects
                 let outgoing: HashSet<_> = kg.relations_from(entity_id)
                     .iter()
-                    .map(|t| t.object.as_str().to_string())
+                    .map(|t| t.object().as_str().to_string())
                     .collect();
 
                 // Each outgoing target should have us in their incoming
                 for target in &outgoing {
                     let incoming_to_target: HashSet<_> = kg.relations_to(target.as_str())
                         .iter()
-                        .map(|t| t.subject.as_str().to_string())
+                        .map(|t| t.subject().as_str().to_string())
                         .collect();
 
                     prop_assert!(

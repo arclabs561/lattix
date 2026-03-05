@@ -103,7 +103,7 @@ pub fn label_propagation(
     let mut result = HashMap::with_capacity(n);
     for (idx, label) in labels.into_iter().enumerate() {
         let entity = &graph[petgraph::graph::NodeIndex::new(idx)];
-        result.insert(entity.id.0.clone(), label);
+        result.insert(entity.id.as_str().to_owned(), label);
     }
     result
 }

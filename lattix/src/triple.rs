@@ -16,26 +16,28 @@ use std::fmt;
 /// use lattix::Triple;
 ///
 /// let triple = Triple::new("Apple", "founded_by", "Steve Jobs");
-/// assert_eq!(triple.subject.as_str(), "Apple");
-/// assert_eq!(triple.predicate.as_str(), "founded_by");
-/// assert_eq!(triple.object.as_str(), "Steve Jobs");
+/// assert_eq!(triple.subject().as_str(), "Apple");
+/// assert_eq!(triple.predicate().as_str(), "founded_by");
+/// assert_eq!(triple.object().as_str(), "Steve Jobs");
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Triple {
     /// Subject entity.
-    pub subject: EntityId,
+    subject: EntityId,
 
     /// Predicate (relation type).
-    pub predicate: RelationType,
+    predicate: RelationType,
 
     /// Object entity.
-    pub object: EntityId,
+    object: EntityId,
 
-    /// Confidence score (0.0 to 1.0).
-    pub confidence: Option<f32>,
+    /// Optional confidence score in `[0.0, 1.0]`. Defaults to `None`, which is
+    /// treated as full confidence (`1.0`) when the triple is added to a
+    /// [`KnowledgeGraph`].
+    confidence: Option<f32>,
 
     /// Source document or provenance.
-    pub source: Option<String>,
+    source: Option<String>,
 }
 
 impl Triple {
@@ -52,6 +54,31 @@ impl Triple {
             confidence: None,
             source: None,
         }
+    }
+
+    /// Get the subject entity.
+    pub fn subject(&self) -> &EntityId {
+        &self.subject
+    }
+
+    /// Get the predicate (relation type).
+    pub fn predicate(&self) -> &RelationType {
+        &self.predicate
+    }
+
+    /// Get the object entity.
+    pub fn object(&self) -> &EntityId {
+        &self.object
+    }
+
+    /// Get the confidence score.
+    pub fn confidence(&self) -> Option<f32> {
+        self.confidence
+    }
+
+    /// Get the source/provenance.
+    pub fn source(&self) -> Option<&str> {
+        self.source.as_deref()
     }
 
     /// Set confidence score.
@@ -222,9 +249,9 @@ mod tests {
     #[test]
     fn test_triple_creation() {
         let t = Triple::new("Apple", "founded_by", "Steve Jobs");
-        assert_eq!(t.subject.as_str(), "Apple");
-        assert_eq!(t.predicate.as_str(), "founded_by");
-        assert_eq!(t.object.as_str(), "Steve Jobs");
+        assert_eq!(t.subject().as_str(), "Apple");
+        assert_eq!(t.predicate().as_str(), "founded_by");
+        assert_eq!(t.object().as_str(), "Steve Jobs");
     }
 
     #[test]
@@ -238,9 +265,9 @@ mod tests {
         let ntriples = original.to_ntriples();
         let parsed = Triple::from_ntriples(&ntriples).unwrap();
 
-        assert_eq!(original.subject, parsed.subject);
-        assert_eq!(original.predicate, parsed.predicate);
-        assert_eq!(original.object, parsed.object);
+        assert_eq!(original.subject(), parsed.subject());
+        assert_eq!(original.predicate(), parsed.predicate());
+        assert_eq!(original.object(), parsed.object());
     }
 
     #[test]
@@ -248,8 +275,8 @@ mod tests {
         let line = r#"<http://example.org/Apple> <http://example.org/type> <http://example.org/Company> ."#;
         let triple = Triple::from_ntriples(line).unwrap();
 
-        assert_eq!(triple.subject.as_str(), "http://example.org/Apple");
-        assert_eq!(triple.predicate.as_str(), "http://example.org/type");
-        assert_eq!(triple.object.as_str(), "http://example.org/Company");
+        assert_eq!(triple.subject().as_str(), "http://example.org/Apple");
+        assert_eq!(triple.predicate().as_str(), "http://example.org/type");
+        assert_eq!(triple.object().as_str(), "http://example.org/Company");
     }
 }

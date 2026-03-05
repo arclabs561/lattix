@@ -8,19 +8,19 @@ use lattix::{KnowledgeGraph, Triple};
 #[test]
 fn qa_triple_construction() {
     let t = Triple::new("Alice", "knows", "Bob");
-    assert_eq!(t.subject.as_str(), "Alice");
-    assert_eq!(t.predicate.as_str(), "knows");
-    assert_eq!(t.object.as_str(), "Bob");
+    assert_eq!(t.subject().as_str(), "Alice");
+    assert_eq!(t.predicate().as_str(), "knows");
+    assert_eq!(t.object().as_str(), "Bob");
 }
 
 #[test]
 fn qa_confidence_clamping() {
     let t = Triple::new("A", "r", "B").with_confidence(1.5);
-    assert!(t.confidence.unwrap() <= 1.0);
+    assert!(t.confidence().unwrap() <= 1.0);
     let t = Triple::new("A", "r", "B").with_confidence(-0.5);
-    assert!(t.confidence.unwrap() >= 0.0);
+    assert!(t.confidence().unwrap() >= 0.0);
     let t = Triple::new("A", "r", "B").with_confidence(0.75);
-    assert!((t.confidence.unwrap() - 0.75).abs() < 1e-10);
+    assert!((t.confidence().unwrap() - 0.75).abs() < 1e-10);
 }
 
 #[test]
@@ -49,8 +49,8 @@ fn qa_path_finding() {
     assert!(path.is_some());
     let path = path.unwrap();
     assert_eq!(path.len(), 3); // 3 edges, not 4 nodes
-    assert_eq!(path[0].subject.as_str(), "A");
-    assert_eq!(path[2].object.as_str(), "D");
+    assert_eq!(path[0].subject().as_str(), "A");
+    assert_eq!(path[2].object().as_str(), "D");
 
     // No path in reverse (directed graph)
     assert!(kg.find_path("D", "A").is_none());
@@ -188,9 +188,9 @@ fn qa_per_triple_ntriples_roundtrip() {
     for triple in kg.triples() {
         let nt = triple.to_ntriples();
         let parsed = Triple::from_ntriples(&nt).unwrap();
-        assert_eq!(triple.subject, parsed.subject);
-        assert_eq!(triple.predicate, parsed.predicate);
-        assert_eq!(triple.object, parsed.object);
+        assert_eq!(triple.subject(), parsed.subject());
+        assert_eq!(triple.predicate(), parsed.predicate());
+        assert_eq!(triple.object(), parsed.object());
     }
 }
 
@@ -200,9 +200,9 @@ fn qa_from_ntriples_blank_node_and_literal() {
     let t = Triple::new("_:b0", "http://ex.org/r", "\"hello\"@en");
     let nt = t.to_ntriples();
     let parsed = Triple::from_ntriples(&nt).unwrap();
-    assert_eq!(parsed.subject.as_str(), "_:b0");
-    assert_eq!(parsed.predicate.as_str(), "http://ex.org/r");
-    assert_eq!(parsed.object.as_str(), "\"hello\"@en");
+    assert_eq!(parsed.subject().as_str(), "_:b0");
+    assert_eq!(parsed.predicate().as_str(), "http://ex.org/r");
+    assert_eq!(parsed.object().as_str(), "\"hello\"@en");
 }
 
 #[test]
@@ -348,15 +348,15 @@ fn qa_unicode_entities() {
     let t = Triple::new("東京", "located_in", "日本");
     let nt = t.to_ntriples();
     let recovered = Triple::from_ntriples(&nt).unwrap();
-    assert_eq!(recovered.subject.as_str(), "東京");
-    assert_eq!(recovered.object.as_str(), "日本");
+    assert_eq!(recovered.subject().as_str(), "東京");
+    assert_eq!(recovered.object().as_str(), "日本");
 }
 
 #[test]
 fn qa_very_long_entity_names() {
     let long = "A".repeat(2000);
     let t = Triple::new(long.as_str(), "r", "B");
-    assert_eq!(t.subject.as_str(), long);
+    assert_eq!(t.subject().as_str(), long);
 
     let mut kg = KnowledgeGraph::new();
     kg.add_triple(t);

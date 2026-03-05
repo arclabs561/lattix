@@ -1,4 +1,4 @@
-use crate::{Entity, EntityId, Relation, RelationType, Result, Triple};
+use crate::{Entity, EntityId, Error, Relation, RelationType, Result, Triple};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
@@ -150,21 +150,23 @@ impl KnowledgeGraph {
 
         for (idx, triple) in self.triples.iter().enumerate() {
             self.subject_index
-                .entry(triple.subject.clone())
+                .entry(triple.subject().clone())
                 .or_default()
                 .push(idx);
             self.object_index
-                .entry(triple.object.clone())
+                .entry(triple.object().clone())
                 .or_default()
                 .push(idx);
             self.predicate_index
-                .entry(triple.predicate.clone())
+                .entry(triple.predicate().clone())
                 .or_default()
                 .push(idx);
         }
     }
 
-    /// Load from N-Triples file.
+    /// Leniently load from an N-Triples file, skipping lines that fail to parse.
+    ///
+    /// Use [`from_ntriples_file_strict`](Self::from_ntriples_file_strict) for fail-fast behavior.
     pub fn from_ntriples_file(path: impl AsRef<Path>) -> Result<Self> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
@@ -181,6 +183,42 @@ impl KnowledgeGraph {
             if let Ok(triple) = Triple::from_ntriples(line) {
                 kg.add_triple(triple);
             }
+        }
+
+        Ok(kg)
+    }
+
+    /// Load from an N-Triples file, returning an error on the first unparseable line.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidNTriples`] with the line number and content if any
+    /// non-empty, non-comment line fails to parse.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use lattix::KnowledgeGraph;
+    /// let kg = KnowledgeGraph::from_ntriples_file_strict("data.nt")?;
+    /// assert!(kg.triple_count() > 0);
+    /// # Ok::<(), lattix::Error>(())
+    /// ```
+    pub fn from_ntriples_file_strict(path: impl AsRef<Path>) -> Result<Self> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let mut kg = Self::new();
+
+        for (line_no, line) in reader.lines().enumerate() {
+            let line = line?;
+            let line = line.trim();
+
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            let triple = Triple::from_ntriples(line)
+                .map_err(|_| Error::InvalidNTriples(format!("line {}: {}", line_no + 1, line)))?;
+            kg.add_triple(triple);
         }
 
         Ok(kg)
@@ -237,19 +275,21 @@ impl KnowledgeGraph {
 
     /// Add a triple to the graph.
     ///
+    /// A triple with `None` confidence is treated as having confidence `1.0`.
+    ///
     /// Duplicate triples are stored, not deduplicated. Adding the same
     /// (subject, predicate, object) twice will increment `triple_count()` by 2
     /// and create two parallel edges in the underlying petgraph.
     pub fn add_triple(&mut self, triple: Triple) {
         // Ensure subject entity exists
-        let subject_idx = self.get_or_create_entity(&triple.subject);
+        let subject_idx = self.get_or_create_entity(triple.subject());
 
         // Ensure object entity exists
-        let object_idx = self.get_or_create_entity(&triple.object);
+        let object_idx = self.get_or_create_entity(triple.object());
 
         // Create relation
-        let relation = Relation::new(triple.predicate.clone())
-            .with_confidence(triple.confidence.unwrap_or(1.0));
+        let relation = Relation::new(triple.predicate().clone())
+            .with_confidence(triple.confidence().unwrap_or(1.0));
 
         // Add edge
         self.graph.add_edge(subject_idx, object_idx, relation);
@@ -257,15 +297,15 @@ impl KnowledgeGraph {
         // Update indexes
         let triple_idx = self.triples.len();
         self.subject_index
-            .entry(triple.subject.clone())
+            .entry(triple.subject().clone())
             .or_default()
             .push(triple_idx);
         self.object_index
-            .entry(triple.object.clone())
+            .entry(triple.object().clone())
             .or_default()
             .push(triple_idx);
         self.predicate_index
-            .entry(triple.predicate.clone())
+            .entry(triple.predicate().clone())
             .or_default()
             .push(triple_idx);
 
@@ -285,13 +325,12 @@ impl KnowledgeGraph {
         object: &EntityId,
     ) -> bool {
         // Find the triple index
-        let triple_idx =
-            match self.triples.iter().position(|t| {
-                t.subject == *subject && t.predicate == *predicate && t.object == *object
-            }) {
-                Some(idx) => idx,
-                None => return false,
-            };
+        let triple_idx = match self.triples.iter().position(|t| {
+            *t.subject() == *subject && *t.predicate() == *predicate && *t.object() == *object
+        }) {
+            Some(idx) => idx,
+            None => return false,
+        };
 
         let removed = self.triples.swap_remove(triple_idx);
 
@@ -315,16 +354,16 @@ impl KnowledgeGraph {
         }
 
         // Remove triple_idx from subject_index, object_index, and predicate_index
-        if let Some(indices) = self.subject_index.get_mut(&removed.subject) {
+        if let Some(indices) = self.subject_index.get_mut(removed.subject()) {
             indices.retain(|&i| i != triple_idx);
         }
-        if let Some(indices) = self.object_index.get_mut(&removed.object) {
+        if let Some(indices) = self.object_index.get_mut(removed.object()) {
             indices.retain(|&i| i != triple_idx);
         }
-        if let Some(indices) = self.predicate_index.get_mut(&removed.predicate) {
+        if let Some(indices) = self.predicate_index.get_mut(removed.predicate()) {
             indices.retain(|&i| i != triple_idx);
             if indices.is_empty() {
-                self.predicate_index.remove(&removed.predicate);
+                self.predicate_index.remove(removed.predicate());
             }
         }
 
@@ -334,7 +373,7 @@ impl KnowledgeGraph {
         if triple_idx < swapped_from {
             // An element was swapped: update its entries from swapped_from -> triple_idx
             let swapped = &self.triples[triple_idx];
-            if let Some(indices) = self.subject_index.get_mut(&swapped.subject) {
+            if let Some(indices) = self.subject_index.get_mut(swapped.subject()) {
                 for i in indices.iter_mut() {
                     if *i == swapped_from {
                         *i = triple_idx;
@@ -342,7 +381,7 @@ impl KnowledgeGraph {
                     }
                 }
             }
-            if let Some(indices) = self.object_index.get_mut(&swapped.object) {
+            if let Some(indices) = self.object_index.get_mut(swapped.object()) {
                 for i in indices.iter_mut() {
                     if *i == swapped_from {
                         *i = triple_idx;
@@ -350,7 +389,7 @@ impl KnowledgeGraph {
                     }
                 }
             }
-            if let Some(indices) = self.predicate_index.get_mut(&swapped.predicate) {
+            if let Some(indices) = self.predicate_index.get_mut(swapped.predicate()) {
                 for i in indices.iter_mut() {
                     if *i == swapped_from {
                         *i = triple_idx;
@@ -468,13 +507,18 @@ impl KnowledgeGraph {
                 let relation = &self.graph[edge];
                 let src_entity = &self.graph[src];
                 let dst_entity = &self.graph[dst];
-                triples.push(Triple {
-                    subject: src_entity.id.clone(),
-                    predicate: relation.relation_type.clone(),
-                    object: dst_entity.id.clone(),
-                    confidence: relation.confidence,
-                    source: relation.source.clone(),
-                });
+                let mut t = Triple::new(
+                    src_entity.id.clone(),
+                    relation.relation_type.clone(),
+                    dst_entity.id.clone(),
+                );
+                if let Some(c) = relation.confidence {
+                    t = t.with_confidence(c);
+                }
+                if let Some(ref s) = relation.source {
+                    t = t.with_source(s.clone());
+                }
+                triples.push(t);
             }
         }
 
@@ -675,15 +719,21 @@ impl KnowledgeGraph {
     pub fn diff(&self, other: &KnowledgeGraph) -> KnowledgeGraph {
         let other_set: HashSet<(&str, &str, &str)> = other
             .triples()
-            .map(|t| (t.subject.as_str(), t.predicate.as_str(), t.object.as_str()))
+            .map(|t| {
+                (
+                    t.subject().as_str(),
+                    t.predicate().as_str(),
+                    t.object().as_str(),
+                )
+            })
             .collect();
 
         let mut result = KnowledgeGraph::new();
         for triple in self.triples() {
             let key = (
-                triple.subject.as_str(),
-                triple.predicate.as_str(),
-                triple.object.as_str(),
+                triple.subject().as_str(),
+                triple.predicate().as_str(),
+                triple.object().as_str(),
             );
             if !other_set.contains(&key) {
                 result.add_triple(triple.clone());
@@ -715,15 +765,21 @@ impl KnowledgeGraph {
     pub fn intersection(&self, other: &KnowledgeGraph) -> KnowledgeGraph {
         let other_set: HashSet<(&str, &str, &str)> = other
             .triples()
-            .map(|t| (t.subject.as_str(), t.predicate.as_str(), t.object.as_str()))
+            .map(|t| {
+                (
+                    t.subject().as_str(),
+                    t.predicate().as_str(),
+                    t.object().as_str(),
+                )
+            })
             .collect();
 
         let mut result = KnowledgeGraph::new();
         for triple in self.triples() {
             let key = (
-                triple.subject.as_str(),
-                triple.predicate.as_str(),
-                triple.object.as_str(),
+                triple.subject().as_str(),
+                triple.predicate().as_str(),
+                triple.object().as_str(),
             );
             if other_set.contains(&key) {
                 result.add_triple(triple.clone());
@@ -770,15 +826,15 @@ impl KnowledgeGraph {
 
             // Follow outgoing edges
             for triple in self.relations_from(current.as_str()) {
-                if visited.insert(triple.object.clone()) {
-                    frontier.push_back((triple.object.clone(), d + 1));
+                if visited.insert(triple.object().clone()) {
+                    frontier.push_back((triple.object().clone(), d + 1));
                 }
             }
 
             // Follow incoming edges
             for triple in self.relations_to(current.as_str()) {
-                if visited.insert(triple.subject.clone()) {
-                    frontier.push_back((triple.subject.clone(), d + 1));
+                if visited.insert(triple.subject().clone()) {
+                    frontier.push_back((triple.subject().clone(), d + 1));
                 }
             }
         }
@@ -786,7 +842,7 @@ impl KnowledgeGraph {
         // Collect all triples where both endpoints are in the visited set
         let mut result = KnowledgeGraph::new();
         for triple in self.triples() {
-            if visited.contains(&triple.subject) && visited.contains(&triple.object) {
+            if visited.contains(triple.subject()) && visited.contains(triple.object()) {
                 result.add_triple(triple.clone());
             }
         }
@@ -811,7 +867,7 @@ impl KnowledgeGraph {
         let pred_set: HashSet<&str> = predicates.iter().map(|p| p.as_ref()).collect();
         let mut result = KnowledgeGraph::new();
         for triple in self.triples() {
-            if pred_set.contains(triple.predicate.as_str()) {
+            if pred_set.contains(triple.predicate().as_str()) {
                 result.add_triple(triple.clone());
             }
         }
@@ -951,7 +1007,7 @@ mod tests {
         // relations_from should no longer include the removed triple
         let apple_rels = kg.relations_from("Apple");
         assert_eq!(apple_rels.len(), 1);
-        assert_eq!(apple_rels[0].predicate.as_str(), "headquartered_in");
+        assert_eq!(apple_rels[0].predicate().as_str(), "headquartered_in");
 
         // Removing nonexistent triple returns false
         let not_removed =

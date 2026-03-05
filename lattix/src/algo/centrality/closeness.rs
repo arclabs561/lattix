@@ -101,7 +101,7 @@ pub fn closeness_centrality(kg: &KnowledgeGraph, config: ClosenessConfig) -> Has
     if n < 2 {
         return graph
             .node_indices()
-            .map(|idx| (graph[idx].id.0.clone(), 0.0))
+            .map(|idx| (graph[idx].id.as_str().to_owned(), 0.0))
             .collect();
     }
 
@@ -142,7 +142,7 @@ pub fn closeness_centrality(kg: &KnowledgeGraph, config: ClosenessConfig) -> Has
         };
 
         let entity = &graph[source];
-        result.insert(entity.id.0.clone(), normalized_closeness);
+        result.insert(entity.id.as_str().to_owned(), normalized_closeness);
     }
 
     result

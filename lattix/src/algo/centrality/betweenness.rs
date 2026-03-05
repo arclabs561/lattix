@@ -109,7 +109,7 @@ pub fn betweenness_centrality(
     if n < 2 {
         return graph
             .node_indices()
-            .map(|idx| (graph[idx].id.0.clone(), 0.0))
+            .map(|idx| (graph[idx].id.as_str().to_owned(), 0.0))
             .collect();
     }
 
@@ -157,7 +157,7 @@ pub fn betweenness_centrality(
     // Map back to entity IDs
     graph
         .node_indices()
-        .map(|idx| (graph[idx].id.0.clone(), betweenness[idx.index()]))
+        .map(|idx| (graph[idx].id.as_str().to_owned(), betweenness[idx.index()]))
         .collect()
 }
 

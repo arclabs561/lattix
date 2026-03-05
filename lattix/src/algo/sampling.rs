@@ -44,7 +44,7 @@ pub fn sample_neighbors(
         let neighbors = kg.get_node_index(&entity_id).map_or_else(Vec::new, |idx| {
             let all_neighbors: Vec<String> = graph
                 .neighbors(idx)
-                .map(|n_idx| graph[n_idx].id.0.clone())
+                .map(|n_idx| graph[n_idx].id.as_str().to_owned())
                 .collect();
 
             if all_neighbors.len() <= k {
@@ -98,7 +98,7 @@ pub fn sample_neighbors_with_replacement(
                         let n_idx = *all_neighbors
                             .choose(&mut rng)
                             .unwrap_or_else(|| unreachable!("checked is_empty above"));
-                        graph[n_idx].id.0.clone()
+                        graph[n_idx].id.as_str().to_owned()
                     })
                     .collect()
             }
@@ -233,13 +233,13 @@ impl<'a> NeighborSampler<'a> {
             for node_id in &frontier {
                 let src_idx = *node_to_idx
                     .get(node_id)
-                    .unwrap_or_else(|| panic!("frontier node {node_id} should exist"));
+                    .expect("internal: frontier node in index");
                 let entity_id = crate::EntityId::from(node_id.as_str());
 
                 if let Some(node_idx) = self.kg.get_node_index(&entity_id) {
                     let all_neighbors: Vec<String> = graph
                         .neighbors(node_idx)
-                        .map(|n_idx| graph[n_idx].id.0.clone())
+                        .map(|n_idx| graph[n_idx].id.as_str().to_owned())
                         .collect();
 
                     // Sample neighbors

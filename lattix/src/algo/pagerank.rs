@@ -58,7 +58,7 @@ pub fn pagerank(kg: &KnowledgeGraph, config: PageRankConfig) -> HashMap<String, 
     let mut result = HashMap::with_capacity(n);
     for (idx, score) in scores.into_iter().enumerate() {
         let entity = &graph[petgraph::graph::NodeIndex::new(idx)];
-        result.insert(entity.id.0.clone(), score);
+        result.insert(entity.id.as_str().to_owned(), score);
     }
     result
 }

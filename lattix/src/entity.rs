@@ -5,7 +5,7 @@ use std::fmt;
 
 /// Unique identifier for an entity.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct EntityId(pub String);
+pub struct EntityId(String);
 
 impl EntityId {
     /// Create a new entity ID.
@@ -16,6 +16,11 @@ impl EntityId {
     /// Get the ID as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Consume and return the inner String.
+    pub fn into_string(self) -> String {
+        self.0
     }
 }
 

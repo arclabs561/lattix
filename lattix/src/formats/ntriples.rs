@@ -95,11 +95,11 @@ impl NTriples {
     pub fn write<W: Write>(kg: &KnowledgeGraph, writer: W) -> Result<()> {
         let mut writer = std::io::BufWriter::new(writer);
         for triple in kg.triples() {
-            write_nt_subject(&mut writer, triple.subject.as_str())?;
+            write_nt_subject(&mut writer, triple.subject().as_str())?;
             writer.write_all(b" <")?;
-            writer.write_all(triple.predicate.as_str().as_bytes())?;
+            writer.write_all(triple.predicate().as_str().as_bytes())?;
             writer.write_all(b"> ")?;
-            write_nt_object(&mut writer, triple.object.as_str())?;
+            write_nt_object(&mut writer, triple.object().as_str())?;
             writer.write_all(b" .\n")?;
         }
         Ok(())
@@ -141,7 +141,7 @@ mod tests {
         let kg = NTriples::parse(input).unwrap();
         assert_eq!(kg.triple_count(), 1);
         let triple = kg.triples().next().unwrap();
-        assert_eq!(triple.object.as_str(), "_:b0");
+        assert_eq!(triple.object().as_str(), "_:b0");
     }
 
     #[test]
@@ -150,12 +150,18 @@ mod tests {
         let kg = NTriples::parse(input).unwrap();
         assert_eq!(kg.triple_count(), 1);
         let triple = kg.triples().next().unwrap();
-        assert_eq!(triple.subject.as_str(), "_:b0");
+        assert_eq!(triple.subject().as_str(), "_:b0");
 
         // Write and verify no angle brackets around blank node subject
         let output = NTriples::to_string(&kg).unwrap();
-        assert!(output.contains("_:b0 "), "blank node subject must not be wrapped in <>");
-        assert!(!output.contains("<_:b0>"), "blank node must not get angle brackets");
+        assert!(
+            output.contains("_:b0 "),
+            "blank node subject must not be wrapped in <>"
+        );
+        assert!(
+            !output.contains("<_:b0>"),
+            "blank node must not get angle brackets"
+        );
     }
 
     #[test]
@@ -163,7 +169,7 @@ mod tests {
         let input = "<http://example.org/s> <http://example.org/p> \"hello\"@en .\n";
         let kg = NTriples::parse(input).unwrap();
         let triple = kg.triples().next().unwrap();
-        assert_eq!(triple.object.as_str(), "\"hello\"@en");
+        assert_eq!(triple.object().as_str(), "\"hello\"@en");
     }
 
     #[test]
@@ -172,7 +178,7 @@ mod tests {
         let kg = NTriples::parse(input).unwrap();
         let triple = kg.triples().next().unwrap();
         assert_eq!(
-            triple.object.as_str(),
+            triple.object().as_str(),
             "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>"
         );
     }

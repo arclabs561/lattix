@@ -9,7 +9,7 @@
 //! - Caches previous node's neighbors in `HashSet` for O(1) membership test
 //! - Parallelized across walk iterations via rayon
 
-use crate::KnowledgeGraph;
+use crate::{Error, KnowledgeGraph};
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 use rayon::prelude::*;
@@ -84,8 +84,10 @@ pub struct WalkCorpus {
 /// Note: the underlying walk generator operates on `KnowledgeGraph`'s internal `petgraph`
 /// structure. We reuse `generate_walks` (which yields entity IDs) and then map entity IDs to
 /// dense indices. This avoids duplicating the node2vec walk logic.
-#[must_use]
-pub fn generate_walk_corpus(kg: &KnowledgeGraph, config: RandomWalkConfig) -> WalkCorpus {
+pub fn generate_walk_corpus(
+    kg: &KnowledgeGraph,
+    config: RandomWalkConfig,
+) -> crate::Result<WalkCorpus> {
     // Build a stable dense ordering over node identifiers.
     let graph = kg.as_petgraph();
     let mut node_indices: Vec<_> = graph.node_indices().collect();
@@ -93,7 +95,7 @@ pub fn generate_walk_corpus(kg: &KnowledgeGraph, config: RandomWalkConfig) -> Wa
 
     let node_ids: Vec<String> = node_indices
         .iter()
-        .map(|&n| graph[n].id.0.clone())
+        .map(|&n| graph[n].id.as_str().to_owned())
         .collect();
 
     let id_to_dense: HashMap<String, u32> = node_ids
@@ -103,20 +105,17 @@ pub fn generate_walk_corpus(kg: &KnowledgeGraph, config: RandomWalkConfig) -> Wa
         .collect();
 
     let walks_ids = generate_walks(kg, config);
-    let walks = walks_ids
-        .into_iter()
-        .map(|w| {
-            w.into_iter()
-                .map(|id| {
-                    *id_to_dense
-                        .get(&id)
-                        .unwrap_or_else(|| panic!("walk referenced unknown node id: {id}"))
-                })
-                .collect::<Vec<u32>>()
-        })
-        .collect();
+    let mut walks = Vec::with_capacity(walks_ids.len());
+    for w in walks_ids {
+        let mut dense_walk = Vec::with_capacity(w.len());
+        for id in w {
+            let idx = *id_to_dense.get(&id).ok_or(Error::EntityNotFound(id))?;
+            dense_walk.push(idx);
+        }
+        walks.push(dense_walk);
+    }
 
-    WalkCorpus { node_ids, walks }
+    Ok(WalkCorpus { node_ids, walks })
 }
 
 /// `Node2Vec` random walker.
@@ -166,7 +165,7 @@ impl<'a> Node2Vec<'a> {
     fn unbiased_walk<R: Rng>(&self, start: petgraph::graph::NodeIndex, rng: &mut R) -> Vec<String> {
         let graph = self.kg.as_petgraph();
         let mut walk = Vec::with_capacity(self.config.walk_length);
-        walk.push(graph[start].id.0.clone());
+        walk.push(graph[start].id.as_str().to_owned());
 
         let mut curr = start;
         for _ in 1..self.config.walk_length {
@@ -176,8 +175,8 @@ impl<'a> Node2Vec<'a> {
             }
             curr = *neighbors
                 .choose(rng)
-                .unwrap_or_else(|| panic!("neighbors cannot be empty (checked above)"));
-            walk.push(graph[curr].id.0.clone());
+                .expect("internal: neighbors non-empty after check");
+            walk.push(graph[curr].id.as_str().to_owned());
         }
         walk
     }
@@ -186,7 +185,7 @@ impl<'a> Node2Vec<'a> {
     fn biased_walk<R: Rng>(&self, start: petgraph::graph::NodeIndex, rng: &mut R) -> Vec<String> {
         let graph = self.kg.as_petgraph();
         let mut walk = Vec::with_capacity(self.config.walk_length);
-        walk.push(graph[start].id.0.clone());
+        walk.push(graph[start].id.as_str().to_owned());
 
         let mut curr = start;
         let mut prev: Option<petgraph::graph::NodeIndex> = None;
@@ -204,10 +203,10 @@ impl<'a> Node2Vec<'a> {
                 // First step: uniform
                 *neighbors
                     .choose(rng)
-                    .unwrap_or_else(|| panic!("neighbors should not be empty"))
+                    .expect("internal: neighbors non-empty after check")
             };
 
-            walk.push(graph[next].id.0.clone());
+            walk.push(graph[next].id.as_str().to_owned());
 
             // Update state: cache current's neighbors as they become "prev_neighbors"
             prev = Some(curr);
@@ -241,7 +240,7 @@ impl<'a> Node2Vec<'a> {
         loop {
             let candidate = *neighbors
                 .choose(rng)
-                .unwrap_or_else(|| panic!("neighbors should not be empty (checked by caller)"));
+                .expect("internal: neighbors non-empty (caller guarantees)");
             let r: f64 = rng.random();
 
             let unnorm_prob = if candidate == prev_node {

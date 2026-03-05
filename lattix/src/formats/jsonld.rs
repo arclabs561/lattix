@@ -55,7 +55,7 @@ impl JsonLd {
             std::collections::HashMap::new();
         for triple in kg.triples() {
             by_subject
-                .entry(triple.subject.as_str().to_string())
+                .entry(triple.subject().as_str().to_string())
                 .or_default()
                 .push(triple);
         }
@@ -66,8 +66,8 @@ impl JsonLd {
             });
 
             for triple in triples {
-                let pred = triple.predicate.as_str();
-                let obj = triple.object.as_str();
+                let pred = triple.predicate().as_str();
+                let obj = triple.object().as_str();
 
                 // Use @id for object if it looks like a URI
                 let obj_value = if obj.starts_with("http://") || obj.starts_with("https://") {

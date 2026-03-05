@@ -103,7 +103,7 @@ pub fn degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, DegreeCentralit
 
         let entity = &graph[idx];
         result.insert(
-            entity.id.0.clone(),
+            entity.id.as_str().to_owned(),
             DegreeCentrality {
                 in_degree: in_deg,
                 out_degree: out_deg,

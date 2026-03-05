@@ -106,7 +106,7 @@ impl GraphEdge {
     /// Set confidence score.
     #[must_use]
     pub fn with_confidence(mut self, confidence: f64) -> Self {
-        self.confidence = confidence;
+        self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
 
@@ -488,10 +488,10 @@ mod tests {
         assert_eq!(kg.triple_count(), 1);
 
         let triples: Vec<_> = kg.triples().collect();
-        assert_eq!(triples[0].subject.as_str(), "a");
-        assert_eq!(triples[0].predicate.as_str(), "WORKS_AT");
-        assert_eq!(triples[0].object.as_str(), "b");
-        assert_eq!(triples[0].confidence, Some(0.7));
+        assert_eq!(triples[0].subject().as_str(), "a");
+        assert_eq!(triples[0].predicate().as_str(), "WORKS_AT");
+        assert_eq!(triples[0].object().as_str(), "b");
+        assert_eq!(triples[0].confidence(), Some(0.7));
 
         let alice = kg.get_entity(&EntityId::new("a")).unwrap();
         assert_eq!(alice.label.as_deref(), Some("Alice"));

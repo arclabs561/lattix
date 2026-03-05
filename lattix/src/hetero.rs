@@ -100,9 +100,9 @@ pub type TypedNodeIndex = usize;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EdgeStore {
     /// Source node indices (local to src_type).
-    pub src: Vec<TypedNodeIndex>,
+    src: Vec<TypedNodeIndex>,
     /// Target node indices (local to dst_type).
-    pub dst: Vec<TypedNodeIndex>,
+    dst: Vec<TypedNodeIndex>,
     /// Forward adjacency: src -> list of dst indices.
     #[serde(skip)]
     fwd_adj: HashMap<TypedNodeIndex, Vec<TypedNodeIndex>>,
@@ -133,6 +133,31 @@ impl EdgeStore {
     /// Number of edges.
     pub fn num_edges(&self) -> usize {
         self.src.len()
+    }
+
+    /// Number of edges (alias for [`num_edges`](Self::num_edges)).
+    pub fn len(&self) -> usize {
+        self.src.len()
+    }
+
+    /// Returns `true` if there are no edges.
+    pub fn is_empty(&self) -> bool {
+        self.src.is_empty()
+    }
+
+    /// Source node indices (COO format).
+    pub fn src(&self) -> &[TypedNodeIndex] {
+        &self.src
+    }
+
+    /// Destination node indices (COO format).
+    pub fn dst(&self) -> &[TypedNodeIndex] {
+        &self.dst
+    }
+
+    /// Edge index as (src, dst) pair (COO format, PyG convention).
+    pub fn edge_index(&self) -> (&[TypedNodeIndex], &[TypedNodeIndex]) {
+        (&self.src, &self.dst)
     }
 
     /// Add an edge.
@@ -522,7 +547,7 @@ impl HeteroGraph {
                 Some(s) => s,
                 None => continue,
             };
-            for (&s, &d) in edge_store.src.iter().zip(edge_store.dst.iter()) {
+            for (&s, &d) in edge_store.src().iter().zip(edge_store.dst().iter()) {
                 if let (Some(subj), Some(obj)) = (src_store.get_id(s), dst_store.get_id(d)) {
                     kg.add_triple(crate::Triple::new(subj, &*edge_type.relation, obj));
                 }
@@ -553,10 +578,14 @@ impl From<&crate::KnowledgeGraph> for HeteroGraph {
         for triple in kg.triples() {
             let edge_type = EdgeType::new(
                 entity_type.clone(),
-                triple.predicate.as_str(),
+                triple.predicate().as_str(),
                 entity_type.clone(),
             );
-            hg.add_edge(&edge_type, triple.subject.as_str(), triple.object.as_str());
+            hg.add_edge(
+                &edge_type,
+                triple.subject().as_str(),
+                triple.object().as_str(),
+            );
         }
 
         hg

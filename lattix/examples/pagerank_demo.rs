@@ -32,7 +32,7 @@ fn main() {
     println!("Knowledge Graph: Scientific influences");
     println!("Triples:");
     for t in &triples {
-        println!("  ({}, {}, {})", t.subject, t.predicate, t.object);
+        println!("  ({}, {}, {})", t.subject(), t.predicate(), t.object());
     }
 
     let mut kg = KnowledgeGraph::new();

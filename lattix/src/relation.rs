@@ -5,7 +5,7 @@ use std::fmt;
 
 /// A relation type (edge label) in a knowledge graph.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct RelationType(pub String);
+pub struct RelationType(String);
 
 impl RelationType {
     /// Create a new relation type.
@@ -16,6 +16,11 @@ impl RelationType {
     /// Get the relation type as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Consume and return the inner String.
+    pub fn into_string(self) -> String {
+        self.0
     }
 }
 

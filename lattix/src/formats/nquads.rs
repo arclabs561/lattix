@@ -134,7 +134,7 @@ mod tests {
     fn test_parse_quad() {
         let line = "<http://example.org/s> <http://example.org/p> <http://example.org/o> <http://example.org/g> .";
         let quad = Quad::from_nquads(line).unwrap();
-        assert_eq!(quad.triple.subject.as_str(), "http://example.org/s");
+        assert_eq!(quad.triple.subject().as_str(), "http://example.org/s");
         assert_eq!(quad.graph, Some("http://example.org/g".to_string()));
     }
 
