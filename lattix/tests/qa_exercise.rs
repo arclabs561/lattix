@@ -295,10 +295,7 @@ fn qa_hypertriple_with_qualifiers() {
 
     assert_eq!(ht.arity(), 4); // subject + object + 2 qualifiers
     assert_eq!(ht.qualifiers.len(), 2);
-    assert_eq!(
-        ht.qualifiers[&RelationType::new("year")].as_str(),
-        "1921"
-    );
+    assert_eq!(ht.qualifiers[&RelationType::new("year")].as_str(), "1921");
 }
 
 #[test]
