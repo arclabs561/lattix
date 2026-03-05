@@ -162,6 +162,9 @@ impl GraphDocument {
     ///
     /// - Nodes become `Entity` records (id/label/type/properties).
     /// - Edges become `Triple` records (subject/predicate/object), with optional confidence.
+    ///
+    /// Note: edge `properties` and document-level `metadata` are not transferred,
+    /// since `Triple` has no arbitrary properties field.
     #[must_use]
     pub fn to_knowledge_graph(&self) -> KnowledgeGraph {
         let mut kg = KnowledgeGraph::new();

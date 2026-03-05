@@ -198,7 +198,9 @@ pub use query::TripleQuery;
 pub use relation::{Relation, RelationType};
 pub use triple::Triple;
 
-// Re-export petgraph for advanced graph operations
+// Re-export petgraph for advanced graph operations.
+// Note: this couples lattix's semver to petgraph's -- a petgraph major bump
+// is a lattix breaking change.
 pub use petgraph;
 
 /// Load all N-Triples files from a directory (e.g., anno export directory).

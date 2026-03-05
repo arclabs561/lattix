@@ -109,6 +109,15 @@ pub fn katz_centrality(kg: &KnowledgeGraph, config: KatzConfig) -> HashMap<Strin
         return HashMap::new();
     }
 
+    // α must be in (0, 1) for the power iteration to converge.
+    // The true requirement is α < 1/λ_max, but computing λ_max is expensive;
+    // α >= 1 is always invalid regardless of graph structure.
+    assert!(
+        config.alpha > 0.0 && config.alpha < 1.0,
+        "Katz alpha must be in (0, 1) for convergence, got {}",
+        config.alpha
+    );
+
     // Initialize with beta
     let mut scores = vec![config.beta; n];
     let mut new_scores = vec![0.0; n];

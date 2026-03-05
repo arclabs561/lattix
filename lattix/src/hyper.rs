@@ -226,7 +226,7 @@ impl HyperEdge {
         self.bindings.get(position).map(|b| &b.entity)
     }
 
-    /// Get entity by role name.
+    /// Get entity by role name. Returns the first match if duplicate roles exist.
     pub fn entity_by_role(&self, role: &str) -> Option<&EntityId> {
         self.bindings
             .iter()
