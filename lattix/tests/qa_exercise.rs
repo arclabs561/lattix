@@ -476,7 +476,7 @@ fn qa_katz_alpha_validation() {
     use lattix::algo::centrality::{katz_centrality, KatzConfig};
     let mut kg = KnowledgeGraph::new();
     kg.add_triple(Triple::new("A", "r", "B"));
-    katz_centrality(
+    let _ = katz_centrality(
         &kg,
         KatzConfig {
             alpha: 1.5,

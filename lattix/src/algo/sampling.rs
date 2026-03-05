@@ -11,7 +11,7 @@
 use crate::KnowledgeGraph;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Sample up to k neighbors for each node in the batch.
 ///
@@ -288,8 +288,9 @@ impl<'a> NeighborSampler<'a> {
 /// Samples neighbors along specific edge types for heterogeneous GNNs.
 pub struct HeteroNeighborSampler<'a> {
     kg: &'a crate::HeteroGraph,
-    /// Fanout per edge type.
-    fanout: HashMap<crate::EdgeType, Vec<usize>>,
+    /// Fanout per edge type. Uses `BTreeMap` for deterministic edge-type
+    /// ordering within each layer (ensures reproducible sampling with the same seed).
+    fanout: BTreeMap<crate::EdgeType, Vec<usize>>,
 }
 
 impl<'a> HeteroNeighborSampler<'a> {
@@ -299,7 +300,10 @@ impl<'a> HeteroNeighborSampler<'a> {
     /// * `kg` - The heterogeneous graph
     /// * `fanout` - Map from edge type to layer-wise fanout
     pub fn new(kg: &'a crate::HeteroGraph, fanout: HashMap<crate::EdgeType, Vec<usize>>) -> Self {
-        Self { kg, fanout }
+        Self {
+            kg,
+            fanout: fanout.into_iter().collect(),
+        }
     }
 
     /// Sample from specific seed nodes and node type.

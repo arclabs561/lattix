@@ -19,7 +19,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petgraph = { version = "0.6", features = ["serde-1"] }
 thiserror = "2.0"
-graphops = { version = "0.1.0", features = ["petgraph"] }
+graphops = { version = "0.1.0", features = ["petgraph"], optional = true }
 oxttl = { version = "0.2.3", optional = true }
 rand = { version = "0.9", optional = true }
 rand_xorshift = { version = "0.4.0", optional = true }
@@ -37,7 +37,7 @@ criterion = "0.7"
 [features]
 default = ["formats", "algo"]
 formats = ["dep:oxttl", "dep:oxrdf", "dep:csv"]
-algo = ["dep:rand", "dep:rand_xorshift", "dep:rand_distr", "dep:rayon"]
+algo = ["dep:graphops", "dep:rand", "dep:rand_xorshift", "dep:rand_distr", "dep:rayon"]
 binary = ["dep:bincode"]
 sophia = ["dep:sophia_api"]
 

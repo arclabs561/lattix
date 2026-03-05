@@ -145,6 +145,20 @@ mod tests {
     }
 
     #[test]
+    fn test_blank_node_subject_roundtrip() {
+        let input = "_:b0 <http://example.org/p> <http://example.org/o> .\n";
+        let kg = NTriples::parse(input).unwrap();
+        assert_eq!(kg.triple_count(), 1);
+        let triple = kg.triples().next().unwrap();
+        assert_eq!(triple.subject.as_str(), "_:b0");
+
+        // Write and verify no angle brackets around blank node subject
+        let output = NTriples::to_string(&kg).unwrap();
+        assert!(output.contains("_:b0 "), "blank node subject must not be wrapped in <>");
+        assert!(!output.contains("<_:b0>"), "blank node must not get angle brackets");
+    }
+
+    #[test]
     fn test_literals() {
         let input = "<http://example.org/s> <http://example.org/p> \"hello\"@en .\n";
         let kg = NTriples::parse(input).unwrap();
