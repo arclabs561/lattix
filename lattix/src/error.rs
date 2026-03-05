@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Error type for lattix operations.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum Error {
     /// Triple parsing error.
     #[error("Failed to parse triple: {0}")]
@@ -24,6 +25,10 @@ pub enum Error {
     /// JSON error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Serialization/deserialization error (bincode, etc.).
+    #[error("serialization error: {0}")]
+    Serialization(Box<dyn std::error::Error + Send + Sync>),
 }
 
 /// Result type for lattix operations.

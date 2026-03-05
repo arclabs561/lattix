@@ -9,7 +9,7 @@ centrality/community algorithms, neighbor sampling for GNN training, and RDF for
 
 ```toml
 [dependencies]
-lattix = "0.4.0"
+lattix = "0.5.0"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
@@ -49,7 +49,7 @@ assert_eq!(apple_relations.len(), 2);
 Disable defaults for a minimal build (just types + serde):
 
 ```toml
-lattix = { version = "0.4.0", default-features = false }
+lattix = { version = "0.5.0", default-features = false }
 ```
 
 ## Algorithms

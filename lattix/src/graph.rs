@@ -257,8 +257,8 @@ impl KnowledgeGraph {
     pub fn from_binary_file(path: impl AsRef<Path>) -> Result<Self> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let mut kg: Self = bincode::deserialize_from(reader)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let mut kg: Self =
+            bincode::deserialize_from(reader).map_err(|e| Error::Serialization(e.into()))?;
         kg.rebuild_indexes();
         Ok(kg)
     }
@@ -268,8 +268,7 @@ impl KnowledgeGraph {
     pub fn to_binary_file(&self, path: impl AsRef<Path>) -> Result<()> {
         let file = File::create(path)?;
         let mut writer = std::io::BufWriter::new(file);
-        bincode::serialize_into(&mut writer, self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        bincode::serialize_into(&mut writer, self).map_err(|e| Error::Serialization(e.into()))?;
         Ok(())
     }
 
