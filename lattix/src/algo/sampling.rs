@@ -304,7 +304,9 @@ impl<'a> HeteroNeighborSampler<'a> {
 
     /// Sample from specific seed nodes and node type.
     ///
-    /// Returns a subgraph containing sampled neighbors via all specified edge types.
+    /// Performs multi-layer sampling: each layer in the fanout vector expands
+    /// the frontier by sampling that many neighbors per node. Layer 0 samples
+    /// from the seed nodes, layer 1 samples from the layer-0 results, etc.
     pub fn sample(
         &self,
         seed_type: &crate::NodeType,
@@ -320,50 +322,56 @@ impl<'a> HeteroNeighborSampler<'a> {
         // Track edges per type
         let mut sampled_edges: HashMap<crate::EdgeType, Vec<(usize, usize)>> = HashMap::new();
 
-        // For each edge type, sample neighbors
-        for (edge_type, fanout_layers) in &self.fanout {
-            let mut edges = Vec::new();
-            let mut new_dst_nodes = Vec::new();
+        // Find max number of layers across all edge types
+        let max_layers = self.fanout.values().map(|v| v.len()).max().unwrap_or(0);
 
-            // Get source nodes for this edge type (clone to avoid borrow conflict)
-            let src_nodes: Vec<usize> = sampled_nodes
-                .get(&edge_type.src_type)
-                .cloned()
-                .unwrap_or_default();
-
-            for src_local_idx in src_nodes {
-                // Sample neighbors via this edge type
-                let neighbors = self.kg.neighbors(edge_type, src_local_idx);
-
-                let num_sample = fanout_layers.first().copied().unwrap_or(0);
-                let sampled: Vec<_> = if neighbors.len() <= num_sample {
-                    neighbors
-                } else {
-                    neighbors
-                        .choose_multiple(&mut rng, num_sample)
-                        .copied()
-                        .collect()
+        for layer in 0..max_layers {
+            for (edge_type, fanout_layers) in &self.fanout {
+                let num_sample = match fanout_layers.get(layer) {
+                    Some(&n) => n,
+                    None => continue, // This edge type has no more layers
                 };
 
-                for dst_local_idx in sampled {
-                    edges.push((src_local_idx, dst_local_idx));
-                    new_dst_nodes.push(dst_local_idx);
+                let mut new_dst_nodes = Vec::new();
+
+                // Get source nodes for this edge type (clone to avoid borrow conflict)
+                let src_nodes: Vec<usize> = sampled_nodes
+                    .get(&edge_type.src_type)
+                    .cloned()
+                    .unwrap_or_default();
+
+                let edges = sampled_edges.entry(edge_type.clone()).or_default();
+
+                for src_local_idx in src_nodes {
+                    let neighbors = self.kg.neighbors(edge_type, src_local_idx);
+
+                    let sampled: Vec<_> = if neighbors.len() <= num_sample {
+                        neighbors
+                    } else {
+                        neighbors
+                            .choose_multiple(&mut rng, num_sample)
+                            .copied()
+                            .collect()
+                    };
+
+                    for dst_local_idx in sampled {
+                        edges.push((src_local_idx, dst_local_idx));
+                        new_dst_nodes.push(dst_local_idx);
+                    }
                 }
+
+                // Add destination nodes so they become sources for the next layer
+                sampled_nodes
+                    .entry(edge_type.dst_type.clone())
+                    .or_default()
+                    .extend(new_dst_nodes);
             }
 
-            // Add destination nodes after the loop
-            sampled_nodes
-                .entry(edge_type.dst_type.clone())
-                .or_default()
-                .extend(new_dst_nodes);
-
-            sampled_edges.insert(edge_type.clone(), edges);
-        }
-
-        // Deduplicate sampled nodes
-        for nodes in sampled_nodes.values_mut() {
-            nodes.sort_unstable();
-            nodes.dedup();
+            // Deduplicate after each layer so the next layer's frontier is clean
+            for nodes in sampled_nodes.values_mut() {
+                nodes.sort_unstable();
+                nodes.dedup();
+            }
         }
 
         HeteroSubgraphBatch {

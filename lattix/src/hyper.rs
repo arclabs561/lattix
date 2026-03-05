@@ -100,6 +100,22 @@ impl HyperTriple {
         self
     }
 
+    /// Look up a qualifier value by key string.
+    ///
+    /// Convenience wrapper that avoids constructing a `RelationType` manually.
+    ///
+    /// ```
+    /// use lattix::HyperTriple;
+    ///
+    /// let ht = HyperTriple::from_parts("Einstein", "won", "Nobel Prize")
+    ///     .with_qualifier("year", "1921");
+    /// assert_eq!(ht.qualifier("year").unwrap().as_str(), "1921");
+    /// assert!(ht.qualifier("field").is_none());
+    /// ```
+    pub fn qualifier(&self, key: &str) -> Option<&EntityId> {
+        self.qualifiers.get(&RelationType::from(key))
+    }
+
     /// Get the arity (number of entities involved).
     /// Core triple has 2 entities, each qualifier adds 1.
     pub fn arity(&self) -> usize {

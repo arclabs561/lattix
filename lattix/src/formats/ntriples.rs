@@ -10,20 +10,25 @@ use crate::{KnowledgeGraph, Result, Triple};
 use oxttl::NTriplesParser;
 use std::io::{Read, Write};
 
-/// Convert a lattix string to N-Triples term syntax for serialization.
-fn to_nt_subject(s: &str) -> String {
-    if let Some(id) = s.strip_prefix("_:") {
-        format!("_:{}", id)
+/// Write a lattix string as an N-Triples subject/predicate term (IRI or blank node).
+fn write_nt_subject(w: &mut impl Write, s: &str) -> std::io::Result<()> {
+    if s.starts_with("_:") {
+        w.write_all(s.as_bytes())
     } else {
-        format!("<{}>", s)
+        w.write_all(b"<")?;
+        w.write_all(s.as_bytes())?;
+        w.write_all(b">")
     }
 }
 
-fn to_nt_object(s: &str) -> String {
+/// Write a lattix string as an N-Triples object term (IRI, blank node, or literal).
+fn write_nt_object(w: &mut impl Write, s: &str) -> std::io::Result<()> {
     if s.starts_with("_:") || s.starts_with('"') {
-        s.to_string()
+        w.write_all(s.as_bytes())
     } else {
-        format!("<{}>", s)
+        w.write_all(b"<")?;
+        w.write_all(s.as_bytes())?;
+        w.write_all(b">")
     }
 }
 
@@ -90,10 +95,12 @@ impl NTriples {
     pub fn write<W: Write>(kg: &KnowledgeGraph, writer: W) -> Result<()> {
         let mut writer = std::io::BufWriter::new(writer);
         for triple in kg.triples() {
-            let s = to_nt_subject(triple.subject.as_str());
-            let p = format!("<{}>", triple.predicate.as_str());
-            let o = to_nt_object(triple.object.as_str());
-            writeln!(writer, "{} {} {} .", s, p, o)?;
+            write_nt_subject(&mut writer, triple.subject.as_str())?;
+            writer.write_all(b" <")?;
+            writer.write_all(triple.predicate.as_str().as_bytes())?;
+            writer.write_all(b"> ")?;
+            write_nt_object(&mut writer, triple.object.as_str())?;
+            writer.write_all(b" .\n")?;
         }
         Ok(())
     }

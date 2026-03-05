@@ -468,3 +468,19 @@ fn qa_ntriples_write_bufwriter() {
     let lines: Vec<&str> = output.lines().filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 100);
 }
+
+/// Katz alpha validation: alpha >= 1.0 should panic.
+#[test]
+#[should_panic(expected = "Katz alpha must be in (0, 1)")]
+fn qa_katz_alpha_validation() {
+    use lattix::algo::centrality::{katz_centrality, KatzConfig};
+    let mut kg = KnowledgeGraph::new();
+    kg.add_triple(Triple::new("A", "r", "B"));
+    katz_centrality(
+        &kg,
+        KatzConfig {
+            alpha: 1.5,
+            ..Default::default()
+        },
+    );
+}
