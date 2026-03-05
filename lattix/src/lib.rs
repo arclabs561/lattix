@@ -192,7 +192,9 @@ pub use entity::{Entity, EntityId};
 pub use error::{Error, Result};
 pub use exchange::{GraphDocument, GraphEdge, GraphExportFormat, GraphNode};
 pub use graph::{KnowledgeGraph, KnowledgeGraphStats};
-pub use hetero::{EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType};
+pub use hetero::{
+    EdgeStore, EdgeType, HeteroGraph, HeteroGraphStats, NodeStore, NodeType, TypedNodeIndex,
+};
 pub use hyper::{HyperEdge, HyperGraph, HyperTriple, RoleBinding};
 pub use query::TripleQuery;
 pub use relation::{Relation, RelationType};

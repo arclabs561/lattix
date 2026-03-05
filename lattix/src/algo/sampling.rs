@@ -11,7 +11,7 @@
 use crate::KnowledgeGraph;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Sample up to k neighbors for each node in the batch.
 ///
@@ -220,13 +220,15 @@ impl<'a> NeighborSampler<'a> {
         let mut layer_sizes = vec![target_count];
         let mut edges_per_layer = Vec::new();
 
-        // Current frontier of nodes to sample from
-        let mut frontier: HashSet<String> = seed_nodes.iter().cloned().collect();
+        // Current frontier of nodes to sample from.
+        // BTreeSet for deterministic iteration order (ensures reproducible
+        // sampling with the same seed -- same fix as HeteroNeighborSampler).
+        let mut frontier: BTreeSet<String> = seed_nodes.iter().cloned().collect();
 
         // Sample each layer (outward from targets)
         for &num_neighbors in &self.fanout {
             let mut layer_edges = Vec::new();
-            let mut next_frontier = HashSet::new();
+            let mut next_frontier = BTreeSet::new();
 
             for node_id in &frontier {
                 let src_idx = *node_to_idx
