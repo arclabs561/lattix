@@ -86,10 +86,12 @@ impl Triple {
 
         // Simple N-Triples parser
         // Format: <subject> <predicate> <object> .
+        // Handles IRIs (<...>), blank nodes (_:xxx), and literals ("...")
         let mut parts = Vec::new();
         let mut current = String::new();
         let mut in_uri = false;
         let mut in_literal = false;
+        let mut in_bnode = false;
         let mut escape_next = false;
 
         for c in line.chars() {
@@ -104,23 +106,51 @@ impl Triple {
                     escape_next = true;
                     current.push(c);
                 }
-                '<' if !in_literal => {
+                '<' if !in_literal && !in_bnode && current.is_empty() => {
                     in_uri = true;
+                }
+                // Datatype IRI in literal suffix: "42"^^<xsd:integer>
+                '<' if !in_literal && !in_bnode && !current.is_empty() => {
+                    current.push(c);
                 }
                 '>' if in_uri && !in_literal => {
                     in_uri = false;
                     parts.push(current.clone());
                     current.clear();
                 }
-                '"' if !in_uri => {
+                // Closing > for datatype IRI in literal suffix
+                '>' if !in_uri && !in_literal && !current.is_empty() => {
+                    current.push(c);
+                }
+                '"' if !in_uri && !in_bnode => {
                     in_literal = !in_literal;
                     current.push(c);
                 }
-                '.' if !in_uri && !in_literal && current.is_empty() => {
+                // Blank node: starts with _: when not inside another term
+                '_' if !in_uri && !in_literal && !in_bnode && current.is_empty() => {
+                    in_bnode = true;
+                    current.push(c);
+                }
+                // Blank node ends at whitespace
+                ' ' | '\t' if in_bnode => {
+                    in_bnode = false;
+                    parts.push(current.clone());
+                    current.clear();
+                }
+                // Whitespace outside any term: flush accumulated token (literal suffix, etc.)
+                ' ' | '\t' if !in_uri && !in_literal && !in_bnode && !current.is_empty() => {
+                    parts.push(current.clone());
+                    current.clear();
+                }
+                '.' if !in_uri && !in_literal && !in_bnode && current.is_empty() => {
                     // End of triple
                     break;
                 }
-                _ if in_uri || in_literal => {
+                _ if in_uri || in_literal || in_bnode => {
+                    current.push(c);
+                }
+                // Accumulate literal suffixes (@en, ^^<datatype>) after closing quote
+                _ if !current.is_empty() => {
                     current.push(c);
                 }
                 _ => {}
