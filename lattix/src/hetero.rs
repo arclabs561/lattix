@@ -504,6 +504,16 @@ impl HeteroGraph {
     }
 }
 
+impl HeteroGraph {
+    /// Convert a [`KnowledgeGraph`](crate::KnowledgeGraph) into a `HeteroGraph`.
+    ///
+    /// Uses predicate as edge type, with a default `"entity"` node type.
+    /// This is the inverse of [`to_knowledge_graph`](Self::to_knowledge_graph).
+    pub fn from_knowledge_graph(kg: &crate::KnowledgeGraph) -> Self {
+        Self::from(kg)
+    }
+}
+
 /// Convert from homogeneous KnowledgeGraph to HeteroGraph.
 ///
 /// Uses predicate as edge type, with a default "entity" node type.

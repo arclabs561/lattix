@@ -87,7 +87,8 @@ impl NTriples {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn write<W: Write>(kg: &KnowledgeGraph, mut writer: W) -> Result<()> {
+    pub fn write<W: Write>(kg: &KnowledgeGraph, writer: W) -> Result<()> {
+        let mut writer = std::io::BufWriter::new(writer);
         for triple in kg.triples() {
             let s = to_nt_subject(triple.subject.as_str());
             let p = format!("<{}>", triple.predicate.as_str());

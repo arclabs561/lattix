@@ -439,7 +439,8 @@ impl KnowledgeGraph {
         }
     }
 
-    /// Find a path between two entities.
+    /// Find a path between two entities, returning the sequence of triples (edges)
+    /// along the shortest path. Returns `None` if no path exists.
     pub fn find_path(
         &self,
         from: impl Into<EntityId>,
