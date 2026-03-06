@@ -9,7 +9,7 @@ centrality/community algorithms, neighbor sampling for GNN training, and RDF for
 
 ```toml
 [dependencies]
-lattix = "0.5.0"
+lattix = "0.5.1"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
