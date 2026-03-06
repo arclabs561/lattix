@@ -244,15 +244,16 @@ impl NodeStore {
     }
 }
 
-/// Serde proxy for [`HeteroGraph`] deserialization.
+/// Serde proxy for [`HeteroGraph`].
 ///
-/// After deserializing, we call `rebuild_adjacency()` so the `#[serde(skip)]`
-/// adjacency indexes in each [`EdgeStore`] are restored. This mirrors the
-/// [`KnowledgeGraph`](crate::KnowledgeGraph) custom-deser pattern.
-#[derive(Deserialize)]
+/// Uses `Vec<(EdgeType, EdgeStore)>` instead of `HashMap<EdgeType, EdgeStore>`
+/// so that JSON serialization works (`serde_json` requires map keys to be strings,
+/// but `EdgeType` is a struct). On deserialization, `rebuild_adjacency()` restores
+/// the `#[serde(skip)]` adjacency indexes in each [`EdgeStore`].
+#[derive(Serialize, Deserialize)]
 struct HeteroGraphSerde {
     node_stores: HashMap<NodeType, NodeStore>,
-    edge_stores: HashMap<EdgeType, EdgeStore>,
+    edge_stores: Vec<(EdgeType, EdgeStore)>,
 }
 
 /// A heterogeneous graph with typed nodes and edges.
@@ -261,12 +262,29 @@ struct HeteroGraphSerde {
 /// node and edge stores for each type, allowing efficient typed queries.
 ///
 /// Adjacency indexes are automatically rebuilt on deserialization.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 pub struct HeteroGraph {
     /// Nodes by type.
     node_stores: HashMap<NodeType, NodeStore>,
     /// Edges by type.
     edge_stores: HashMap<EdgeType, EdgeStore>,
+}
+
+impl serde::Serialize for HeteroGraph {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let proxy = HeteroGraphSerde {
+            node_stores: self.node_stores.clone(),
+            edge_stores: self
+                .edge_stores
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+        };
+        proxy.serialize(serializer)
+    }
 }
 
 impl<'de> serde::Deserialize<'de> for HeteroGraph {
@@ -277,7 +295,7 @@ impl<'de> serde::Deserialize<'de> for HeteroGraph {
         let raw = HeteroGraphSerde::deserialize(deserializer)?;
         let mut hg = Self {
             node_stores: raw.node_stores,
-            edge_stores: raw.edge_stores,
+            edge_stores: raw.edge_stores.into_iter().collect(),
         };
         hg.rebuild_adjacency();
         Ok(hg)
