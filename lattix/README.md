@@ -49,7 +49,7 @@ assert_eq!(apple_relations.len(), 2);
 Disable defaults for a minimal build (just types + serde):
 
 ```toml
-lattix = { version = "0.5.0", default-features = false }
+lattix = { version = "0.5.1", default-features = false }
 ```
 
 ## Algorithms
