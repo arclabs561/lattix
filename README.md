@@ -6,6 +6,13 @@
 
 Knowledge graph substrate: core types, algorithms, and formats.
 
+Dual-licensed under MIT or Apache-2.0.
+
+```toml
+[dependencies]
+lattix = "0.5.1"
+```
+
 ```rust
 use lattix::{KnowledgeGraph, Triple};
 

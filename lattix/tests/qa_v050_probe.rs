@@ -7,8 +7,7 @@
 //! - rand_distr removed from dependencies
 
 use lattix::{
-    EdgeStore, EdgeType, EntityId, Error, HeteroGraph, KnowledgeGraph, NodeType, RelationType,
-    Triple,
+    EdgeStore, EdgeType, EntityId, Error, HeteroGraph, KnowledgeGraph, RelationType, Triple,
 };
 
 // ============================================================
@@ -181,7 +180,7 @@ mod error_serialization {
 
     #[test]
     fn error_serialization_from_custom_error() {
-        let inner = std::io::Error::new(std::io::ErrorKind::Other, "boom");
+        let inner = std::io::Error::other("boom");
         let err = Error::Serialization(Box::new(inner));
         let msg = format!("{}", err);
         assert!(
@@ -279,6 +278,7 @@ mod serde_roundtrip {
     #[cfg(feature = "binary")]
     #[test]
     fn heterograph_bincode_roundtrip() {
+        use lattix::NodeType;
         let mut hg = HeteroGraph::new();
         let buys = EdgeType::new("user", "buys", "item");
         hg.add_edge(&buys, "alice", "book1");

@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 // QA exercise tests for lattix v0.3.0 (qa-2026-03-05)
 // Covers: core types, algorithms, formats, HeteroGraph, HyperGraph, edge cases
 

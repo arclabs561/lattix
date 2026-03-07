@@ -128,7 +128,7 @@ fn bench_insertion(c: &mut Criterion) {
     // Single triple insertion
     group.bench_function("insert_triple", |b| {
         b.iter_batched(
-            || KnowledgeGraph::new(),
+            KnowledgeGraph::new,
             |mut kg| {
                 kg.add_triple(Triple::new("Alice", "knows", "Bob"));
                 black_box(kg)
