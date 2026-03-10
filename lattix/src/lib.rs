@@ -201,8 +201,13 @@ pub use relation::{Relation, RelationType};
 pub use triple::Triple;
 
 // Re-export petgraph for advanced graph operations.
-// Note: this couples lattix's semver to petgraph's -- a petgraph major bump
-// is a lattix breaking change.
+//
+// Ideally users would depend on petgraph directly, but removing this re-export
+// is a breaking change because public API methods expose petgraph types:
+//   - KnowledgeGraph::as_petgraph() -> &DiGraph<Entity, Relation>
+//   - KnowledgeGraph::get_node_index() -> Option<petgraph::graph::NodeIndex>
+// Removing the re-export requires wrapping these return types first.
+// A petgraph major bump is also a lattix breaking change.
 pub use petgraph;
 
 /// Load all N-Triples files from a directory (e.g., anno export directory).
