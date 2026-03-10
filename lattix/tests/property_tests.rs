@@ -871,3 +871,295 @@ mod invariant_props {
         }
     }
 }
+
+mod hypergraph_props {
+    use super::*;
+
+    fn arb_entity_id() -> impl Strategy<Value = String> {
+        "[a-zA-Z][a-zA-Z0-9]{0,8}".prop_map(|s| s)
+    }
+
+    fn arb_relation() -> impl Strategy<Value = String> {
+        "[a-z_]{1,6}".prop_map(|s| s)
+    }
+
+    prop_compose! {
+        fn arb_hyper_triple()(
+            subject in arb_entity_id(),
+            predicate in arb_relation(),
+            object in arb_entity_id(),
+            qual_keys in prop::collection::vec(arb_relation(), 0..3),
+            qual_vals in prop::collection::vec(arb_entity_id(), 0..3),
+        ) -> (String, String, String, Vec<(String, String)>) {
+            let qualifiers: Vec<(String, String)> = qual_keys.into_iter()
+                .zip(qual_vals)
+                .collect();
+            (subject, predicate, object, qualifiers)
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// Roundtrip: add hyper-triples, verify find_by_entity returns them.
+        #[test]
+        fn hyper_triple_roundtrip_find_by_entity(
+            items in prop::collection::vec(arb_hyper_triple(), 1..20),
+        ) {
+            use lattix::{HyperGraph, HyperTriple};
+
+            let mut hg = HyperGraph::new();
+            for (s, p, o, quals) in &items {
+                let mut ht = HyperTriple::from_parts(s.as_str(), p.as_str(), o.as_str());
+                for (k, v) in quals {
+                    ht = ht.with_qualifier(k.as_str(), v.as_str());
+                }
+                hg.add_hyper_triple(ht);
+            }
+
+            // Every subject should be findable
+            for (s, _, _, _) in &items {
+                let results = hg.find_by_entity(s.as_str());
+                prop_assert!(
+                    !results.is_empty(),
+                    "find_by_entity('{}') returned empty, but it was added as a subject",
+                    s
+                );
+            }
+        }
+
+        /// Qualifier handling: add hyper-triples with qualifiers, verify find_by_qualifier.
+        #[test]
+        fn hyper_triple_find_by_qualifier(
+            items in prop::collection::vec(arb_hyper_triple(), 1..15),
+        ) {
+            use lattix::{HyperGraph, HyperTriple};
+
+            let mut hg = HyperGraph::new();
+            for (s, p, o, quals) in &items {
+                let mut ht = HyperTriple::from_parts(s.as_str(), p.as_str(), o.as_str());
+                for (k, v) in quals {
+                    ht = ht.with_qualifier(k.as_str(), v.as_str());
+                }
+                hg.add_hyper_triple(ht);
+            }
+
+            // For each item with qualifiers, find_by_qualifier should return it
+            for (s, _, _, quals) in &items {
+                for (k, v) in quals {
+                    let results = hg.find_by_qualifier(k.as_str(), v.as_str());
+                    // At least the one we added should be present (may not be unique
+                    // if multiple items share the same qualifier key-value).
+                    let found = results.iter().any(|ht| ht.core.subject().as_str() == s);
+                    prop_assert!(
+                        found,
+                        "find_by_qualifier('{}', '{}') did not return hyper-triple with subject '{}'",
+                        k, v, s
+                    );
+                }
+            }
+        }
+
+        /// Reification: verify reify() produces valid triples.
+        #[test]
+        fn hyperedge_reify_produces_valid_triples(
+            relation in arb_relation(),
+            bindings in prop::collection::vec(
+                (arb_relation(), arb_entity_id()), 1..6
+            ),
+        ) {
+            use lattix::HyperEdge;
+
+            let mut he = HyperEdge::new(relation.as_str());
+            for (role, entity) in &bindings {
+                he = he.with_binding(role.as_str(), entity.as_str());
+            }
+
+            let reified = he.reify("_:test_node");
+
+            // Should have 1 (rdf:type) + N (bindings) triples
+            prop_assert_eq!(
+                reified.len(),
+                1 + bindings.len(),
+                "Reified triple count mismatch: expected {}, got {}",
+                1 + bindings.len(),
+                reified.len()
+            );
+
+            // First triple is rdf:type
+            prop_assert_eq!(reified[0].predicate().as_str(), "rdf:type");
+            prop_assert_eq!(reified[0].object().as_str(), relation.as_str());
+
+            // Each subsequent triple should have the intermediate as subject
+            for triple in &reified {
+                prop_assert_eq!(
+                    triple.subject().as_str(),
+                    "_:test_node",
+                    "Reified triple subject should be the intermediate node"
+                );
+            }
+        }
+    }
+}
+
+mod dual_storage_consistency {
+    use super::*;
+
+    fn arb_entity_id() -> impl Strategy<Value = String> {
+        "[a-zA-Z][a-zA-Z0-9]{0,6}".prop_map(|s| s)
+    }
+
+    fn arb_relation() -> impl Strategy<Value = String> {
+        "[a-z_]{1,5}".prop_map(|s| s)
+    }
+
+    prop_compose! {
+        fn arb_triple()(
+            subject in arb_entity_id(),
+            predicate in arb_relation(),
+            object in arb_entity_id(),
+        ) -> (String, String, String) {
+            (subject, predicate, object)
+        }
+    }
+
+    /// Operation: true = add, false = remove (from existing).
+    fn arb_op() -> impl Strategy<Value = bool> {
+        prop::bool::weighted(0.7) // 70% add, 30% remove
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(50))]
+
+        /// Interleave add_triple and remove_triple, then assert:
+        /// - petgraph edge count == triple vec length
+        /// - All triples in vec are findable via petgraph traversal
+        /// - Subject/object/predicate indexes are consistent
+        #[test]
+        fn interleaved_add_remove_consistency(
+            initial in prop::collection::vec(arb_triple(), 5..30),
+            ops in prop::collection::vec((arb_op(), any::<prop::sample::Index>()), 5..30),
+        ) {
+            use lattix::{KnowledgeGraph, Triple};
+
+            let mut kg = KnowledgeGraph::new();
+            for (s, p, o) in &initial {
+                kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+            }
+
+            // Apply interleaved ops
+            for (is_add, idx) in &ops {
+                if *is_add {
+                    // Re-add a triple from the initial set (may create duplicates)
+                    let i = idx.index(initial.len());
+                    let (ref s, ref p, ref o) = initial[i];
+                    kg.add_triple(Triple::new(s.as_str(), p.as_str(), o.as_str()));
+                } else {
+                    // Remove a triple that currently exists (if any)
+                    let count = kg.triple_count();
+                    if count > 0 {
+                        let i = idx.index(count);
+                        let triple: Triple = kg.triples().nth(i).unwrap().clone();
+                        kg.remove_triple(
+                            triple.subject(),
+                            triple.predicate(),
+                            triple.object(),
+                        );
+                    }
+                }
+            }
+
+            // Invariant 1: petgraph edge count == triple vec length
+            let pg_edges = kg.as_petgraph().edge_count();
+            let vec_len = kg.triple_count();
+            prop_assert_eq!(
+                pg_edges,
+                vec_len,
+                "petgraph edge count ({}) != triple vec length ({})",
+                pg_edges,
+                vec_len
+            );
+
+            // Invariant 2: all triples findable via subject_index
+            for triple in kg.triples() {
+                let from_rels = kg.relations_from(triple.subject().as_str());
+                prop_assert!(
+                    from_rels.iter().any(|t|
+                        t.predicate() == triple.predicate() && t.object() == triple.object()
+                    ),
+                    "Triple ({}, {}, {}) not found via relations_from",
+                    triple.subject(), triple.predicate(), triple.object()
+                );
+
+                let to_rels = kg.relations_to(triple.object().as_str());
+                prop_assert!(
+                    to_rels.iter().any(|t|
+                        t.predicate() == triple.predicate() && t.subject() == triple.subject()
+                    ),
+                    "Triple ({}, {}, {}) not found via relations_to",
+                    triple.subject(), triple.predicate(), triple.object()
+                );
+
+                let pred_rels = kg.triples_with_relation(triple.predicate().as_str());
+                prop_assert!(
+                    pred_rels.iter().any(|t|
+                        t.subject() == triple.subject() && t.object() == triple.object()
+                    ),
+                    "Triple ({}, {}, {}) not found via triples_with_relation",
+                    triple.subject(), triple.predicate(), triple.object()
+                );
+            }
+
+            // Invariant 3: petgraph traversal finds edges for all triples
+            for triple in kg.triples() {
+                let src = kg.get_node_index(triple.subject());
+                let dst = kg.get_node_index(triple.object());
+                prop_assert!(src.is_some(), "Subject node missing from petgraph");
+                prop_assert!(dst.is_some(), "Object node missing from petgraph");
+
+                let has_edge = kg.has_edge(
+                    triple.subject().as_str(),
+                    triple.object().as_str()
+                );
+                prop_assert!(
+                    has_edge,
+                    "petgraph has no edge for triple ({}, {}, {})",
+                    triple.subject(), triple.predicate(), triple.object()
+                );
+            }
+        }
+    }
+}
+
+mod ntriples_lenient_props {
+    use std::io::Write;
+
+    #[test]
+    fn lenient_skips_malformed_and_reports_count() {
+        use lattix::KnowledgeGraph;
+
+        let dir = std::env::temp_dir();
+        let path = dir.join("lattix_test_lenient.nt");
+
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            writeln!(f, "<http://ex.org/A> <http://ex.org/r> <http://ex.org/B> .").unwrap();
+            writeln!(f, "this is not valid ntriples").unwrap();
+            writeln!(f, "# comment line").unwrap();
+            writeln!(f, "").unwrap();
+            writeln!(f, "also bad").unwrap();
+            writeln!(f, "<http://ex.org/C> <http://ex.org/r> <http://ex.org/D> .").unwrap();
+        }
+
+        let (kg, skipped) = KnowledgeGraph::from_ntriples_file_lenient(&path).unwrap();
+
+        assert_eq!(kg.triple_count(), 2, "should parse 2 valid triples");
+        assert_eq!(skipped, 2, "should skip 2 malformed lines");
+
+        // Also verify that from_ntriples_file (the original lenient API) still works
+        let kg2 = KnowledgeGraph::from_ntriples_file(&path).unwrap();
+        assert_eq!(kg2.triple_count(), 2);
+
+        std::fs::remove_file(path).ok();
+    }
+}
