@@ -42,6 +42,18 @@ impl From<String> for RelationType {
     }
 }
 
+impl AsRef<str> for RelationType {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<str> for RelationType {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
 /// A relation instance in a knowledge graph.
 ///
 /// This represents an edge between two entities.

@@ -42,6 +42,18 @@ impl From<String> for EntityId {
     }
 }
 
+impl AsRef<str> for EntityId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<str> for EntityId {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
 /// An entity (node) in a knowledge graph.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Entity {
