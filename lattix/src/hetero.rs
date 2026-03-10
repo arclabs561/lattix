@@ -811,4 +811,59 @@ mod tests {
         assert_eq!(store.neighbors(1), &[2]);
         assert_eq!(store.incoming(2), &[0, 1]);
     }
+
+    #[test]
+    fn test_serde_roundtrip_queries_work() {
+        let mut hg = HeteroGraph::new();
+        let buys = EdgeType::new("user", "buys", "item");
+        let follows = EdgeType::new("user", "follows", "user");
+
+        hg.add_edge(&buys, "alice", "book1");
+        hg.add_edge(&buys, "alice", "book2");
+        hg.add_edge(&buys, "bob", "book1");
+        hg.add_edge(&follows, "alice", "bob");
+
+        // Capture pre-serialization query results
+        let alice_buys_pre = {
+            let mut v = hg.neighbors_by_id(&buys, "alice");
+            v.sort();
+            v
+        };
+        let bob_buys_pre = hg.neighbors_by_id(&buys, "bob");
+        let alice_follows_pre = hg.neighbors_by_id(&follows, "alice");
+        let book1_incoming_pre = {
+            let idx = hg.get_node_index(&NodeType::new("item"), "book1").unwrap();
+            let mut v = hg.incoming_neighbors(&buys, idx);
+            v.sort();
+            v
+        };
+
+        // Serialize -> deserialize
+        let json = serde_json::to_string(&hg).expect("serialize");
+        let recovered: HeteroGraph = serde_json::from_str(&json).expect("deserialize");
+
+        // Structural counts
+        assert_eq!(recovered.total_nodes(), hg.total_nodes());
+        assert_eq!(recovered.total_edges(), hg.total_edges());
+        assert_eq!(recovered.num_node_types(), hg.num_node_types());
+        assert_eq!(recovered.num_edge_types(), hg.num_edge_types());
+
+        // Adjacency queries must match (these use the rebuilt fwd_adj/rev_adj)
+        let mut alice_buys_post = recovered.neighbors_by_id(&buys, "alice");
+        alice_buys_post.sort();
+        assert_eq!(alice_buys_post, alice_buys_pre);
+
+        assert_eq!(recovered.neighbors_by_id(&buys, "bob"), bob_buys_pre);
+        assert_eq!(
+            recovered.neighbors_by_id(&follows, "alice"),
+            alice_follows_pre
+        );
+
+        let book1_idx = recovered
+            .get_node_index(&NodeType::new("item"), "book1")
+            .unwrap();
+        let mut book1_incoming_post = recovered.incoming_neighbors(&buys, book1_idx);
+        book1_incoming_post.sort();
+        assert_eq!(book1_incoming_post, book1_incoming_pre);
+    }
 }

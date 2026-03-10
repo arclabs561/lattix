@@ -166,11 +166,35 @@ impl KnowledgeGraph {
 
     /// Leniently load from an N-Triples file, skipping lines that fail to parse.
     ///
-    /// Use [`from_ntriples_file_strict`](Self::from_ntriples_file_strict) for fail-fast behavior.
+    /// Use [`from_ntriples_file_strict`](Self::from_ntriples_file_strict) for fail-fast behavior,
+    /// or [`from_ntriples_file_lenient`](Self::from_ntriples_file_lenient) to get a count of
+    /// skipped lines.
     pub fn from_ntriples_file(path: impl AsRef<Path>) -> Result<Self> {
+        let (kg, _skipped) = Self::from_ntriples_file_lenient(path)?;
+        Ok(kg)
+    }
+
+    /// Leniently load from an N-Triples file, returning both the graph and the
+    /// number of non-empty, non-comment lines that failed to parse.
+    ///
+    /// This makes the lenient behavior observable: callers can log or assert on
+    /// the skip count without switching to strict mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use lattix::KnowledgeGraph;
+    /// let (kg, skipped) = KnowledgeGraph::from_ntriples_file_lenient("data.nt")?;
+    /// if skipped > 0 {
+    ///     eprintln!("{} malformed lines skipped", skipped);
+    /// }
+    /// # Ok::<(), lattix::Error>(())
+    /// ```
+    pub fn from_ntriples_file_lenient(path: impl AsRef<Path>) -> Result<(Self, usize)> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let mut kg = Self::new();
+        let mut skipped = 0usize;
 
         for line in reader.lines() {
             let line = line?;
@@ -180,12 +204,13 @@ impl KnowledgeGraph {
                 continue;
             }
 
-            if let Ok(triple) = Triple::from_ntriples(line) {
-                kg.add_triple(triple);
+            match Triple::from_ntriples(line) {
+                Ok(triple) => kg.add_triple(triple),
+                Err(_) => skipped += 1,
             }
         }
 
-        Ok(kg)
+        Ok((kg, skipped))
     }
 
     /// Load from an N-Triples file, returning an error on the first unparseable line.
