@@ -9,3 +9,8 @@ Cargo.lock
 .cursor/
 .claude/
 qa/
+
+# Hygiene (added by guardian audit)
+.env
+.env.*
+*.log
