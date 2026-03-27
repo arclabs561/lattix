@@ -182,6 +182,7 @@ pub mod formats;
 mod graph;
 pub mod hetero;
 pub mod hyper;
+pub mod metrics;
 mod query;
 mod relation;
 mod triple;
