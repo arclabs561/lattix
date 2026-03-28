@@ -944,12 +944,15 @@ mod hypergraph_props {
                 hg.add_hyper_triple(ht);
             }
 
-            // For each item with qualifiers, find_by_qualifier should return it
+            // For each item, check the *effective* qualifiers (last value per key wins,
+            // since HyperTriple::qualifiers is a HashMap).
             for (s, _, _, quals) in &items {
+                let mut effective: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
                 for (k, v) in quals {
-                    let results = hg.find_by_qualifier(k.as_str(), v.as_str());
-                    // At least the one we added should be present (may not be unique
-                    // if multiple items share the same qualifier key-value).
+                    effective.insert(k.as_str(), v.as_str());
+                }
+                for (k, v) in &effective {
+                    let results = hg.find_by_qualifier(k, v);
                     let found = results.iter().any(|ht| ht.core.subject().as_str() == s);
                     prop_assert!(
                         found,

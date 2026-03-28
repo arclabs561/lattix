@@ -175,6 +175,7 @@
 #[cfg(feature = "algo")]
 pub mod algo;
 mod entity;
+
 mod error;
 pub mod exchange;
 #[cfg(feature = "formats")]
@@ -182,6 +183,9 @@ pub mod formats;
 mod graph;
 pub mod hetero;
 pub mod hyper;
+/// Benchmark data and evaluation for knowledge graph embedding experiments.
+#[cfg(feature = "kge")]
+pub mod kge;
 mod query;
 mod relation;
 mod triple;

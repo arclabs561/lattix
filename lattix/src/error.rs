@@ -22,6 +22,14 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Invalid data format.
+    #[error("Invalid format: {0}")]
+    InvalidFormat(String),
+
+    /// A required file is missing.
+    #[error("Missing file: {0}")]
+    MissingFile(String),
+
     /// JSON error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),

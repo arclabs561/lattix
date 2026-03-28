@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 4805c4c75e119709b8e0c2776ba6523645276f0fbb21cf7042d0235d8414e59f # shrinks to subject = "N", predicate = "a", object = "N"
+cc 8c4072cccb3ebc0b678db9e8f660883ec26a9e76dee4c06ed2537231e0adbcbc # shrinks to items = [("a", "a", "A", [("_", "A"), ("_", "a")])]
