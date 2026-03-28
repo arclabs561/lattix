@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/lattix/badge.svg)](https://docs.rs/lattix)
 [![CI](https://github.com/arclabs561/lattix/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/lattix/actions/workflows/ci.yml)
 
-Knowledge graph substrate: core types, algorithms, and formats.
+Knowledge graph data structures.
 
 Dual-licensed under MIT or Apache-2.0.
 
