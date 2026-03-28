@@ -32,11 +32,13 @@ oxrdf = { version = "0.3.3", optional = true }
 [dev-dependencies]
 proptest = "1.9"
 criterion = "0.7"
+tempfile = "3.27.0"
 
 [features]
 default = ["formats", "algo"]
 formats = ["dep:oxttl", "dep:oxrdf", "dep:csv"]
 algo = ["dep:graphops", "dep:rand", "dep:rand_xorshift", "dep:rayon"]
+kge = []
 binary = ["dep:bincode"]
 sophia = ["dep:sophia_api"]
 
