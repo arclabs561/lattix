@@ -32,6 +32,31 @@ pub fn mean_rank(ranks: &[usize]) -> f64 {
     ranks.iter().sum::<usize>() as f64 / ranks.len() as f64
 }
 
+/// Compute the realistic rank of the true entity given all scores.
+///
+/// Realistic rank (PyKEEN convention) is the mean of optimistic and pessimistic:
+/// - Optimistic: number of entities with strictly better score + 1
+/// - Pessimistic: number of entities with score at least as good
+///
+/// `true_score` is the score of the correct entity. `all_scores` includes
+/// all candidate scores (including the true entity, excluding filtered entities).
+/// Lower scores are assumed better (distance convention).
+pub fn realistic_rank(all_scores: &[f32], true_score: f32) -> f64 {
+    let mut strictly_better = 0usize;
+    let mut at_least_as_good = 0usize;
+    for &s in all_scores {
+        if s < true_score {
+            strictly_better += 1;
+        }
+        if s <= true_score {
+            at_least_as_good += 1;
+        }
+    }
+    let optimistic = strictly_better + 1;
+    let pessimistic = at_least_as_good;
+    (optimistic as f64 + pessimistic as f64) / 2.0
+}
+
 /// Adjusted Mean Rank: `mean_rank / expected_random_mean_rank`.
 ///
 /// The expected mean rank under a uniform random model is `(num_entities + 1) / 2`.
@@ -77,6 +102,40 @@ mod tests {
         let ranks = vec![1, 1, 1]; // MR = 1.0, expected = 50.5
         let amr = adjusted_mean_rank(&ranks, 100);
         assert!((amr - 1.0 / 50.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realistic_rank_no_ties() {
+        // Scores: [0.1, 0.5, 0.3, 0.9], true = 0.3
+        // strictly_better = 1 (0.1), at_least_as_good = 2 (0.1, 0.3)
+        // optimistic = 2, pessimistic = 2, realistic = 2.0
+        let scores = vec![0.1, 0.5, 0.3, 0.9];
+        assert!((realistic_rank(&scores, 0.3) - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realistic_rank_with_ties() {
+        // Scores: [0.3, 0.3, 0.3, 0.9], true = 0.3
+        // strictly_better = 0, at_least_as_good = 3
+        // optimistic = 1, pessimistic = 3, realistic = 2.0
+        let scores = vec![0.3, 0.3, 0.3, 0.9];
+        assert!((realistic_rank(&scores, 0.3) - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realistic_rank_best() {
+        // True entity is the best scorer
+        let scores = vec![0.1, 0.5, 0.9];
+        assert!((realistic_rank(&scores, 0.1) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn realistic_rank_worst() {
+        // True entity is the worst scorer
+        let scores = vec![0.1, 0.5, 0.9];
+        // strictly_better = 2, at_least_as_good = 3
+        // optimistic = 3, pessimistic = 3, realistic = 3.0
+        assert!((realistic_rank(&scores, 0.9) - 3.0).abs() < 1e-9);
     }
 
     #[test]
