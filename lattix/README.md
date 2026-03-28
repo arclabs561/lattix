@@ -9,7 +9,7 @@ centrality/community algorithms, neighbor sampling for GNN training, and RDF for
 
 ```toml
 [dependencies]
-lattix = "0.5.1"
+lattix = "0.6"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
@@ -43,13 +43,20 @@ assert_eq!(apple_relations.len(), 2);
 |---------|---------|-----------------|
 | `formats` | yes | N-Triples, Turtle, N-Quads, JSON-LD, CSV (via oxttl/oxrdf) |
 | `algo` | yes | Centrality, PageRank, PPR, random walks, components, sampling, label propagation |
+| `kge` | no | KGE benchmark data: dataset loading, string interning, filtered eval metrics |
 | `binary` | no | bincode serialization (`to_binary_file` / `from_binary_file`) |
 | `sophia` | no | sophia_api 0.8 trait bridge (`Graph`, `MutableGraph`, `CollectibleGraph`) |
 
 Disable defaults for a minimal build (just types + serde):
 
 ```toml
-lattix = { version = "0.5.1", default-features = false }
+lattix = { version = "0.6", default-features = false }
+```
+
+For KGE benchmark pipelines (dataset loading, MRR/Hits@k evaluation):
+
+```toml
+lattix = { version = "0.6", default-features = false, features = ["kge"] }
 ```
 
 ## Algorithms
