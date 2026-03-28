@@ -2,7 +2,7 @@
 # https://github.com/repository-settings/app
 
 repository:
-  description: "Knowledge graph substrate: core types + basic algorithms + formats"
+  description: "Knowledge graph data structures"
   homepage: "https://docs.rs/lattix"
   private: false
   has_issues: true
