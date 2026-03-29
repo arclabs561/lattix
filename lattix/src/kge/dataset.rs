@@ -46,6 +46,11 @@ impl Vocab {
     pub fn id(&self, s: &str) -> Option<usize> {
         self.to_id.get(s).copied()
     }
+
+    /// All interned names in ID order.
+    pub fn names(&self) -> &[String] {
+        &self.from_id
+    }
 }
 
 /// Raw dataset with train/valid/test splits of string triples.

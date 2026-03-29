@@ -55,7 +55,10 @@ mod triple;
 
 pub use dataset::{Dataset, InternedDataset, Vocab};
 pub use filter::FilterIndex;
-pub use metrics::{adjusted_mean_rank, hits_at_k, mean_rank, mean_reciprocal_rank, realistic_rank};
+pub use metrics::{
+    adjusted_mean_rank, hits_at_k, mean_rank, mean_reciprocal_rank, per_relation_mrr,
+    realistic_rank,
+};
 pub use triple::{Triple, TripleIds};
 
 use crate::{Error, Result};

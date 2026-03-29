@@ -72,6 +72,22 @@ pub fn adjusted_mean_rank(ranks: &[usize], num_entities: usize) -> f64 {
     mr / expected
 }
 
+/// Compute per-relation MRR from `(relation_id, rank)` pairs.
+///
+/// Returns a map from relation ID to MRR. Useful for diagnosing which
+/// relation types a model handles well vs poorly.
+pub fn per_relation_mrr(rel_ranks: &[(usize, usize)]) -> std::collections::HashMap<usize, f64> {
+    let mut grouped: std::collections::HashMap<usize, Vec<usize>> =
+        std::collections::HashMap::new();
+    for &(rel, rank) in rel_ranks {
+        grouped.entry(rel).or_default().push(rank);
+    }
+    grouped
+        .into_iter()
+        .map(|(rel, ranks)| (rel, mean_reciprocal_rank(&ranks)))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
