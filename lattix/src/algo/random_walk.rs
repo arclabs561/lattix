@@ -63,7 +63,7 @@ pub fn generate_walks(kg: &KnowledgeGraph, config: RandomWalkConfig) -> Vec<Vec<
 
 /// A walk corpus over dense node indices (0..N).
 ///
-/// This is the format expected by `webs-nn` (Node2Vec/SkipGram), where embeddings are stored as
+/// This is the format expected by Node2Vec/SkipGram pipelines, where embeddings are stored as
 /// a flat matrix indexed by node id.
 ///
 /// Invariants:
