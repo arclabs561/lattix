@@ -244,12 +244,12 @@ mod tests {
         let rel = ex.get("rel").unwrap();
         let b = ex.get("B").unwrap();
 
-        let inserted = MutableGraph::insert(&mut kg, &a, &rel, &b).unwrap();
+        let inserted = MutableGraph::insert(&mut kg, a, rel, b).unwrap();
         assert!(inserted);
         assert_eq!(kg.triple_count(), 1);
 
         // Verify roundtrip: the triple should be findable via Graph::contains
-        assert!(kg.contains(&a, &rel, &b).unwrap());
+        assert!(kg.contains(a, rel, b).unwrap());
     }
 
     #[test]
@@ -262,10 +262,10 @@ mod tests {
         let founded = ex.get("founded_by").unwrap();
         let jobs = ex.get("SteveJobs").unwrap();
 
-        let removed = MutableGraph::remove(&mut kg, &apple, &founded, &jobs).unwrap();
+        let removed = MutableGraph::remove(&mut kg, apple, founded, jobs).unwrap();
         assert!(removed);
         assert_eq!(kg.triple_count(), 2);
-        assert!(!kg.contains(&apple, &founded, &jobs).unwrap());
+        assert!(!kg.contains(apple, founded, jobs).unwrap());
     }
 
     #[test]
