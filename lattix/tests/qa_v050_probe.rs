@@ -368,7 +368,7 @@ mod sophia_bridge {
         let knows = ex.get("knows").unwrap();
         let bob = ex.get("Bob").unwrap();
 
-        let inserted = MutableGraph::insert(&mut kg, &alice, &knows, &bob).unwrap();
+        let inserted = MutableGraph::insert(&mut kg, alice, knows, bob).unwrap();
         assert!(inserted, "insert should return true");
         assert_eq!(kg.triple_count(), 1);
 
@@ -378,7 +378,7 @@ mod sophia_bridge {
 
         // Verify via triples_matching
         let matches: Vec<_> = kg
-            .triples_matching([alice.clone()], Any, Any)
+            .triples_matching([alice], Any, Any)
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(matches.len(), 1);
@@ -399,17 +399,17 @@ mod sophia_bridge {
         let bob = ex.get("Bob").unwrap();
         let carol = ex.get("Carol").unwrap();
 
-        MutableGraph::insert(&mut kg, &alice, &knows, &bob).unwrap();
-        MutableGraph::insert(&mut kg, &alice, &knows, &carol).unwrap();
+        MutableGraph::insert(&mut kg, alice, knows, bob).unwrap();
+        MutableGraph::insert(&mut kg, alice, knows, carol).unwrap();
         assert_eq!(kg.triple_count(), 2);
 
-        let removed = MutableGraph::remove(&mut kg, &alice, &knows, &bob).unwrap();
+        let removed = MutableGraph::remove(&mut kg, alice, knows, bob).unwrap();
         assert!(removed);
         assert_eq!(kg.triple_count(), 1);
 
         // The remaining triple should be Alice->Carol
-        assert!(!kg.contains(&alice, &knows, &bob).unwrap());
-        assert!(kg.contains(&alice, &knows, &carol).unwrap());
+        assert!(!kg.contains(alice, knows, bob).unwrap());
+        assert!(kg.contains(alice, knows, carol).unwrap());
 
         // Verify accessor on remaining triple
         let t = kg.triples().next().unwrap();

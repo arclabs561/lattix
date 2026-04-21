@@ -1149,7 +1149,7 @@ mod ntriples_lenient_props {
             writeln!(f, "<http://ex.org/A> <http://ex.org/r> <http://ex.org/B> .").unwrap();
             writeln!(f, "this is not valid ntriples").unwrap();
             writeln!(f, "# comment line").unwrap();
-            writeln!(f, "").unwrap();
+            writeln!(f).unwrap();
             writeln!(f, "also bad").unwrap();
             writeln!(f, "<http://ex.org/C> <http://ex.org/r> <http://ex.org/D> .").unwrap();
         }
