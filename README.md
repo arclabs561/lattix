@@ -4,7 +4,10 @@
 [![Documentation](https://docs.rs/lattix/badge.svg)](https://docs.rs/lattix)
 [![CI](https://github.com/arclabs561/lattix/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/lattix/actions/workflows/ci.yml)
 
-Knowledge graph data structures.
+Knowledge graph types and algorithms in Rust: triples, homogeneous
+graphs over [petgraph](https://crates.io/crates/petgraph) for
+traversal/centrality, and heterogeneous graphs with typed nodes/edges
+for RGCN, HGT, and link prediction.
 
 Dual-licensed under MIT or Apache-2.0.
 
