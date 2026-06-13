@@ -13,7 +13,7 @@ Dual-licensed under MIT or Apache-2.0.
 
 ```toml
 [dependencies]
-lattix = "0.5.4"
+lattix = "0.7.1"
 ```
 
 ```rust
