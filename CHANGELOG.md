@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `triples` and `pagerank_demo` examples matching the README starting points.
+
 ## [0.7.1] - 2026-06-10
 
 ### Changed

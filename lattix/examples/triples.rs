@@ -1,56 +1,50 @@
-//! Basic triple and knowledge graph operations.
+//! Basic triple graph queries.
+//!
+//! Run:
+//! `cargo run --example triples`
 
 use lattix::{KnowledgeGraph, Triple};
 
 fn main() {
     let mut kg = KnowledgeGraph::new();
+    kg.add_triple(Triple::new("Apple", "founded_by", "Steve Jobs"));
+    kg.add_triple(Triple::new("Apple", "headquartered_in", "Cupertino"));
+    kg.add_triple(Triple::new("Steve Jobs", "born_in", "San Francisco"));
+    kg.add_triple(Triple::new("Cupertino", "located_in", "California"));
+    kg.add_triple(Triple::new("San Francisco", "located_in", "California"));
 
-    // Build a small knowledge graph about programming languages.
-    let triples = [
-        ("Rust", "designed_by", "Graydon Hoare"),
-        ("Rust", "paradigm", "Systems"),
-        ("Rust", "influenced_by", "ML"),
-        ("Rust", "influenced_by", "C++"),
-        ("OCaml", "paradigm", "Functional"),
-        ("OCaml", "influenced_by", "ML"),
-        ("Haskell", "paradigm", "Functional"),
-        ("Haskell", "influenced_by", "ML"),
-        ("C++", "paradigm", "Systems"),
-        ("C++", "designed_by", "Bjarne Stroustrup"),
-    ];
-    for (s, p, o) in &triples {
-        kg.add_triple(Triple::new(*s, *p, *o));
+    println!("entities: {}", kg.entity_count());
+    println!("triples:  {}", kg.triple_count());
+
+    println!("\nrelations from Apple:");
+    for triple in kg.relations_from("Apple") {
+        println!(
+            "  {} --{}--> {}",
+            triple.subject(),
+            triple.predicate(),
+            triple.object()
+        );
     }
 
-    let stats = kg.stats();
-    println!("=== Knowledge Graph Stats ===");
-    println!("  entities: {}", stats.entity_count);
-    println!("  triples:  {}", stats.triple_count);
-
-    // Query: all relations from "Rust"
-    println!("\n=== Relations from 'Rust' ===");
-    for t in kg.relations_from("Rust") {
-        println!("  {} --[{}]--> {}", t.subject(), t.predicate(), t.object());
+    println!("\nentities connected to California:");
+    for triple in kg.relations_to("California") {
+        println!("  {} via {}", triple.subject(), triple.predicate());
     }
 
-    // Query: what is influenced by "ML"?
-    println!("\n=== Influenced by 'ML' ===");
-    for t in kg.relations_to("ML") {
-        println!("  {} --[{}]--> ML", t.subject(), t.predicate());
+    let path = kg
+        .find_path("Apple", "California")
+        .expect("Apple should reach California");
+    println!("\npath Apple -> California ({} hops):", path.len());
+    for triple in &path {
+        println!(
+            "  {} --{}--> {}",
+            triple.subject(),
+            triple.predicate(),
+            triple.object()
+        );
     }
 
-    // Query: all "paradigm" relations
-    println!("\n=== All 'paradigm' relations ===");
-    for t in kg.triples_with_relation("paradigm") {
-        println!("  {} => {}", t.subject(), t.object());
-    }
-
-    // Find path: Rust -> ML (should exist via influenced_by)
-    if let Some(path) = kg.find_path("Rust", "ML") {
-        println!("\n=== Path: Rust -> ML ===");
-        println!("  hops: {}", path.len());
-        for t in &path {
-            println!("  {} --[{}]--> {}", t.subject(), t.predicate(), t.object());
-        }
-    }
+    assert_eq!(kg.relations_from("Apple").len(), 2);
+    assert_eq!(kg.relations_to("California").len(), 2);
+    assert_eq!(path.len(), 2);
 }
