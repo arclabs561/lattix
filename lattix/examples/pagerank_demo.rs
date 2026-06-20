@@ -1,73 +1,54 @@
-//! PageRank Demo
+//! PageRank over a small citation graph.
 //!
-//! Demonstrates computing PageRank centrality on a knowledge graph.
-//!
-//! ```bash
-//! cargo run --example pagerank_demo --features algo
-//! ```
+//! Run:
+//! `cargo run --example pagerank_demo`
 
 use lattix::algo::pagerank::{pagerank, PageRankConfig};
-use lattix::KnowledgeGraph;
-use lattix::Triple;
+use lattix::algo::top_n;
+use lattix::{KnowledgeGraph, Triple};
 
 fn main() {
-    println!("PageRank Demo");
-    println!("=============\n");
-
-    // Build a small knowledge graph about scientists
-    let triples = vec![
-        Triple::new("Einstein", "influenced", "Feynman"),
-        Triple::new("Einstein", "influenced", "Bohr"),
-        Triple::new("Bohr", "influenced", "Heisenberg"),
-        Triple::new("Bohr", "influenced", "Pauli"),
-        Triple::new("Feynman", "influenced", "Weinberg"),
-        Triple::new("Heisenberg", "influenced", "Pauli"),
-        Triple::new("Pauli", "influenced", "Feynman"),
-        Triple::new("Newton", "influenced", "Einstein"),
-        Triple::new("Maxwell", "influenced", "Einstein"),
-        Triple::new("Planck", "influenced", "Einstein"),
-        Triple::new("Planck", "influenced", "Bohr"),
-    ];
-
-    println!("Knowledge Graph: Scientific influences");
-    println!("Triples:");
-    for t in &triples {
-        println!("  ({}, {}, {})", t.subject(), t.predicate(), t.object());
-    }
-
     let mut kg = KnowledgeGraph::new();
-    for triple in triples {
-        kg.add_triple(triple);
-    }
-    let entity_count = kg.entities().count();
-    println!("\nGraph: {} entities", entity_count);
 
-    // Compute PageRank
-    let config = PageRankConfig {
-        damping_factor: 0.85,
-        max_iterations: 50,
-        tolerance: 1e-6,
-    };
-
-    let scores = pagerank(&kg, config);
-
-    // Sort by PageRank score
-    let mut sorted_scores: Vec<_> = scores.iter().collect();
-    sorted_scores.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
-
-    println!("\nPageRank Results:");
-    println!("Scientist        | Score");
-    println!("-----------------|--------");
-    for (name, score) in sorted_scores.iter().take(10) {
-        println!("{:16} | {:.4}", name, score);
+    // A small citation-shaped graph. Survey papers and methods that receive
+    // citations from several neighborhoods should rise in PageRank.
+    for (subject, object) in [
+        ("paper_a_intro", "paper_b_survey"),
+        ("paper_a_intro", "paper_c_method"),
+        ("paper_d_application", "paper_b_survey"),
+        ("paper_d_application", "paper_c_method"),
+        ("paper_e_followup", "paper_c_method"),
+        ("paper_f_benchmark", "paper_b_survey"),
+        ("paper_f_benchmark", "paper_c_method"),
+        ("paper_g_case_study", "paper_d_application"),
+        ("paper_h_notes", "paper_b_survey"),
+    ] {
+        kg.add_triple(Triple::new(subject, "cites", object));
     }
 
-    println!("\nInterpretation:");
-    println!(
-        "- Weinberg/Feynman have highest PageRank: they're sink nodes (receive but don't give)"
+    let scores = pagerank(
+        &kg,
+        PageRankConfig {
+            damping_factor: 0.85,
+            max_iterations: 100,
+            tolerance: 1e-9,
+        },
     );
-    println!("- Einstein is mid-rank: receives from Newton/Maxwell/Planck, gives to Feynman/Bohr");
-    println!("- Newton/Maxwell/Planck have low scores: they're source nodes (no incoming links)");
+    let top = top_n(&scores, 5);
 
-    println!("\nDone!");
+    println!("top PageRank scores:");
+    for (entity, score) in &top {
+        println!("  {entity:<20} {score:.5}");
+    }
+
+    assert_eq!(scores.len(), kg.entity_count());
+    assert!(matches!(
+        top[0].0.as_str(),
+        "paper_b_survey" | "paper_c_method"
+    ));
+    assert!(matches!(
+        top[1].0.as_str(),
+        "paper_b_survey" | "paper_c_method"
+    ));
+    assert!((top[0].1 - top[1].1).abs() < 1e-9);
 }
