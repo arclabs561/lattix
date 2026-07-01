@@ -69,6 +69,14 @@ neighbor sampling (homogeneous and heterogeneous), label propagation community d
 All iterative algorithms have convergence controls (`max_iterations`, `tolerance`).
 Sampling is deterministic under a given seed.
 
+Examples:
+
+```sh
+cargo run --example triples
+cargo run --example pagerank_demo
+cargo run --example ppr_retrieval
+```
+
 ## Formats
 
 Reads and writes N-Triples, Turtle, N-Quads, and JSON-LD. CSV import is read-only.
