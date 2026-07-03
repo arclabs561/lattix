@@ -38,7 +38,7 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 
 `lattix` provides the types and algorithms for working with knowledge graphs:
 
-- **Triples**: `(subject, predicate, object)` -- the atomic unit of knowledge
+- **Triples**: `(subject, predicate, object)`, the atomic unit of knowledge
 - **Homogeneous graphs**: `KnowledgeGraph` wraps petgraph for traversal, path-finding, and centrality
 - **Heterogeneous graphs**: `HeteroGraph` with typed nodes and edges (for RGCN, HGT, link prediction)
 - **Hypergraphs**: `HyperTriple` (qualifier-based, Wikidata-style) and `HyperEdge` (role-based n-ary relations)
