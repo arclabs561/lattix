@@ -2,14 +2,8 @@
 
 [![crates.io](https://img.shields.io/crates/v/lattix.svg)](https://crates.io/crates/lattix)
 [![Documentation](https://docs.rs/lattix/badge.svg)](https://docs.rs/lattix)
-[![CI](https://github.com/arclabs561/lattix/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/lattix/actions/workflows/ci.yml)
 
-Knowledge graph types and algorithms: triples, homogeneous
-graphs over [petgraph](https://crates.io/crates/petgraph) for
-traversal/centrality, and heterogeneous graphs with typed nodes/edges
-for RGCN, HGT, and link prediction.
-
-Dual-licensed under MIT or Apache-2.0.
+Knowledge graph data structures.
 
 ```toml
 [dependencies]
@@ -54,7 +48,7 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 | `binary` | no | Bincode serialization |
 | `sophia` | no | Sophia RDF framework integration |
 
-Minimal dependency footprint: `cargo add lattix --no-default-features` gives you just core types + petgraph + serde.
+Use `cargo add lattix --no-default-features` for core types, petgraph, and serde only.
 
 ## Starting points
 
