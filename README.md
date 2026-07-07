@@ -52,10 +52,10 @@ Use `cargo add lattix --no-default-features` for core types, petgraph, and serde
 
 ## Starting points
 
-- **Core types**: [`KnowledgeGraph`](https://docs.rs/lattix/latest/lattix/struct.KnowledgeGraph.html), [`Triple`](https://docs.rs/lattix/latest/lattix/struct.Triple.html)
-- **Typed graphs**: [`HeteroGraph`](https://docs.rs/lattix/latest/lattix/hetero/struct.HeteroGraph.html)
-- **N-ary relations**: [`HyperTriple`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperTriple.html), [`HyperEdge`](https://docs.rs/lattix/latest/lattix/hyper/struct.HyperEdge.html)
-- **Algorithms**: [`algo::pagerank`](https://docs.rs/lattix/latest/lattix/algo/pagerank/index.html), [`algo::centrality`](https://docs.rs/lattix/latest/lattix/algo/centrality/index.html)
+- **Core types**: `KnowledgeGraph`, `Triple`
+- **Typed graphs**: `HeteroGraph`
+- **N-ary relations**: `HyperTriple`, `HyperEdge`
+- **Algorithms**: `algo::pagerank`, `algo::centrality`
 - **Examples**: `cargo run --example pagerank_demo`, `cargo run --example triples`
 
 ## License
