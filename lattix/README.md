@@ -44,10 +44,10 @@ assert_eq!(apple_relations.len(), 2);
 | `formats` | yes | N-Triples, Turtle, N-Quads, JSON-LD, CSV (via oxttl/oxrdf) |
 | `algo` | yes | Centrality, PageRank, PPR, random walks, components, sampling, label propagation |
 | `kge` | no | KGE benchmark data: dataset loading, string interning, filtered eval metrics |
-| `binary` | no | bincode serialization (`to_binary_file` / `from_binary_file`) |
-| `sophia` | no | sophia_api 0.8 trait bridge (`Graph`, `MutableGraph`, `CollectibleGraph`) |
+| `binary` | no | postcard serialization (`to_binary_file` / `from_binary_file`) |
+| `sophia` | no | sophia_api 0.10 trait bridge (`Graph`, `MutableGraph`, `CollectibleGraph`) |
 
-Disable defaults for a minimal build (just types + serde):
+Disable defaults for core graph types without the `formats` or `algo` modules:
 
 ```toml
 lattix = { version = "0.7.1", default-features = false }
@@ -80,14 +80,18 @@ cargo run --example ppr_retrieval
 ## Formats
 
 Reads and writes N-Triples, Turtle, N-Quads, and JSON-LD. CSV import is read-only.
-Parsing uses [oxttl](https://crates.io/crates/oxttl); the hand-rolled `Triple::from_ntriples`
-parser is always available (no feature gate).
+N-Triples parsing uses [oxttl](https://crates.io/crates/oxttl), including
+`Triple::from_ntriples`.
+
+RDF support is a compatibility layer over lattix triples. IRIs and blank nodes
+round trip directly; literals are stored in their N-Triples lexical form. RDF
+1.2 triple terms are not part of the public graph model.
 
 ## Dependencies
 
 `petgraph` is the graph backbone and is re-exported (`lattix::petgraph`) for advanced use.
 Algorithm dependencies (`rand`, `rayon`, `graphops`) are optional behind the `algo` feature.
-Format dependencies (`oxttl`, `oxrdf`, `csv`) are optional behind `formats`.
+CSV support is optional behind `formats`; RDF parsing/writing uses `oxttl` and `oxrdf`.
 
 ## License
 

@@ -43,7 +43,7 @@
 //! - Bavelas (1950). "Communication patterns in task-oriented groups"
 //! - Rochat (2009). "Closeness centrality extended to unconnected graphs"
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use petgraph::graph::NodeIndex;
 use std::collections::{HashMap, VecDeque};
 
@@ -74,7 +74,7 @@ impl Default for ClosenessConfig {
 ///
 /// # Complexity
 ///
-/// - Time: O(VE) (BFS from each node)
+/// - Time: O(VE log d_max) (BFS from each node with parallel-edge deduplication)
 /// - Space: O(V)
 ///
 /// # Example
@@ -95,13 +95,16 @@ impl Default for ClosenessConfig {
 /// ```
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-pub fn closeness_centrality(kg: &KnowledgeGraph, config: ClosenessConfig) -> HashMap<String, f64> {
+pub fn closeness_centrality(
+    kg: &KnowledgeGraph,
+    config: ClosenessConfig,
+) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n < 2 {
         return graph
             .node_indices()
-            .map(|idx| (graph[idx].id.as_str().to_owned(), 0.0))
+            .map(|idx| (graph[idx].id.clone(), 0.0))
             .collect();
     }
 
@@ -142,7 +145,7 @@ pub fn closeness_centrality(kg: &KnowledgeGraph, config: ClosenessConfig) -> Has
         };
 
         let entity = &graph[source];
-        result.insert(entity.id.as_str().to_owned(), normalized_closeness);
+        result.insert(entity.id.clone(), normalized_closeness);
     }
 
     result
@@ -167,11 +170,9 @@ fn bfs_distances(
         let v_dist = dist[v.index()];
 
         let neighbors: Vec<NodeIndex> = if undirected {
-            graph.neighbors_undirected(v).collect()
+            crate::algo::unique_neighbors_undirected(graph, v)
         } else {
-            graph
-                .neighbors_directed(v, petgraph::Direction::Outgoing)
-                .collect()
+            crate::algo::unique_neighbors_directed(graph, v, petgraph::Direction::Outgoing)
         };
 
         for w in neighbors {

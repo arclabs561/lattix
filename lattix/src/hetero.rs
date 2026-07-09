@@ -485,10 +485,22 @@ impl HeteroGraph {
     /// Returns nodes reachable via the full metapath from the source.
     pub fn metapath_neighbors(
         &self,
-        _start_type: &NodeType,
+        start_type: &NodeType,
         start_idx: TypedNodeIndex,
         metapath: &[EdgeType],
     ) -> HashSet<TypedNodeIndex> {
+        let Some(store) = self.node_stores.get(start_type) else {
+            return HashSet::new();
+        };
+        if start_idx >= store.num_nodes() {
+            return HashSet::new();
+        }
+        if let Some(first) = metapath.first() {
+            if &first.src_type != start_type {
+                return HashSet::new();
+            }
+        }
+
         let mut current: HashSet<TypedNodeIndex> = [start_idx].into_iter().collect();
 
         for edge_type in metapath {

@@ -274,10 +274,10 @@ mod serde_roundtrip {
         assert!(!store.neighbors(0).is_empty() || !store.neighbors(1).is_empty());
     }
 
-    /// HeteroGraph round-trips through bincode (binary format handles struct keys).
+    /// HeteroGraph round-trips through postcard (binary format handles struct keys).
     #[cfg(feature = "binary")]
     #[test]
-    fn heterograph_bincode_roundtrip() {
+    fn heterograph_postcard_roundtrip() {
         use lattix::NodeType;
         let mut hg = HeteroGraph::new();
         let buys = EdgeType::new("user", "buys", "item");
@@ -285,11 +285,11 @@ mod serde_roundtrip {
         hg.add_edge(&buys, "alice", "book2");
         hg.add_edge(&buys, "bob", "book1");
 
-        let bytes = bincode::serialize(&hg).expect("bincode serialize HeteroGraph");
+        let bytes = postcard::to_allocvec(&hg).expect("postcard serialize HeteroGraph");
         let loaded: HeteroGraph =
-            bincode::deserialize(&bytes).expect("bincode deserialize HeteroGraph");
+            postcard::from_bytes(&bytes).expect("postcard deserialize HeteroGraph");
 
-        // Must rebuild adjacency after bincode deser (fwd_adj/rev_adj are #[serde(skip)])
+        // Must rebuild adjacency after postcard deser (fwd_adj/rev_adj are #[serde(skip)])
         // The custom Deserialize impl should handle this.
         assert_eq!(loaded.total_nodes(), 4);
         assert_eq!(loaded.total_edges(), 3);
@@ -302,7 +302,7 @@ mod serde_roundtrip {
         assert_eq!(
             neighbors.len(),
             2,
-            "alice should have 2 neighbors after bincode deser"
+            "alice should have 2 neighbors after postcard deser"
         );
 
         // Verify incoming also works

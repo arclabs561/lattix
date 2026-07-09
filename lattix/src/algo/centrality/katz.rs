@@ -43,7 +43,7 @@
 //!
 //! - Katz (1953). "A new status index derived from sociometric analysis"
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// Configuration for Katz centrality.
@@ -81,7 +81,7 @@ impl Default for KatzConfig {
 ///
 /// # Complexity
 ///
-/// - Time: O(E × iterations)
+/// - Time: O(E log d_max × iterations) with parallel-edge deduplication
 /// - Space: O(V)
 ///
 /// # Example
@@ -102,7 +102,7 @@ impl Default for KatzConfig {
 /// ```
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-pub fn katz_centrality(kg: &KnowledgeGraph, config: KatzConfig) -> HashMap<String, f64> {
+pub fn katz_centrality(kg: &KnowledgeGraph, config: KatzConfig) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
@@ -129,11 +129,9 @@ pub fn katz_centrality(kg: &KnowledgeGraph, config: KatzConfig) -> HashMap<Strin
 
             // Get predecessors
             let predecessors: Vec<_> = if config.undirected {
-                graph.neighbors_undirected(idx).collect()
+                crate::algo::unique_neighbors_undirected(graph, idx)
             } else {
-                graph
-                    .neighbors_directed(idx, petgraph::Direction::Incoming)
-                    .collect()
+                crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Incoming)
             };
 
             // α × Σ x_pred + β
@@ -168,7 +166,7 @@ pub fn katz_centrality(kg: &KnowledgeGraph, config: KatzConfig) -> HashMap<Strin
     // Map to entity IDs
     graph
         .node_indices()
-        .map(|idx| (graph[idx].id.as_str().to_owned(), scores[idx.index()]))
+        .map(|idx| (graph[idx].id.clone(), scores[idx.index()]))
         .collect()
 }
 

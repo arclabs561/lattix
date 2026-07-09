@@ -47,7 +47,7 @@
 //!
 //! - Kleinberg (1999). "Authoritative sources in a hyperlinked environment"
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// Configuration for HITS algorithm.
@@ -84,7 +84,7 @@ pub struct HitsScores {
 ///
 /// # Complexity
 ///
-/// - Time: O(E × iterations)
+/// - Time: O(E log d_max × iterations) with parallel-edge deduplication
 /// - Space: O(V)
 ///
 /// # Example
@@ -106,7 +106,7 @@ pub struct HitsScores {
 /// ```
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<String, HitsScores> {
+pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<EntityId, HitsScores> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
@@ -125,7 +125,8 @@ pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<String, HitsScor
         // auth(v) = Σ_{u→v} hub(u)
         new_auth.fill(0.0);
         for idx in graph.node_indices() {
-            let incoming = graph.neighbors_directed(idx, petgraph::Direction::Incoming);
+            let incoming =
+                crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Incoming);
             for pred in incoming {
                 new_auth[idx.index()] += hub[pred.index()];
             }
@@ -143,7 +144,8 @@ pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<String, HitsScor
         // hub(v) = Σ_{v→u} auth(u)
         new_hub.fill(0.0);
         for idx in graph.node_indices() {
-            let outgoing = graph.neighbors_directed(idx, petgraph::Direction::Outgoing);
+            let outgoing =
+                crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Outgoing);
             for succ in outgoing {
                 new_hub[idx.index()] += new_auth[succ.index()];
             }
@@ -202,7 +204,7 @@ pub fn hits(kg: &KnowledgeGraph, config: HitsConfig) -> HashMap<String, HitsScor
         .map(|idx| {
             let i = idx.index();
             (
-                graph[idx].id.as_str().to_owned(),
+                graph[idx].id.clone(),
                 HitsScores {
                     hub: hub[i],
                     authority: auth[i],

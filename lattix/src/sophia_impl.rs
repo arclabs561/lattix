@@ -1,7 +1,7 @@
 //! sophia_api trait implementations for [`KnowledgeGraph`].
 //!
 //! Implements [`Graph`], [`MutableGraph`], and [`CollectibleGraph`] from
-//! sophia_api 0.8, gated behind the `sophia` feature.
+//! sophia_api 0.10, gated behind the `sophia` feature.
 //!
 //! # Term mapping
 //!
@@ -16,7 +16,7 @@
 //! [`MutableGraph`]: sophia_api::graph::MutableGraph
 //! [`CollectibleGraph`]: sophia_api::graph::CollectibleGraph
 
-use sophia_api::graph::{CollectibleGraph, GTripleSource, Graph, MgResult, MutableGraph};
+use sophia_api::graph::{CollectibleGraph, Graph, MgResult, MutableGraph};
 use sophia_api::source::{StreamResult, TripleSource};
 use sophia_api::term::bnode_id::BnodeId;
 use sophia_api::term::{IriRef, SimpleTerm, Term};
@@ -35,26 +35,18 @@ fn str_to_term(s: &str) -> SimpleTerm<'_> {
     if let Some(rest) = s.strip_prefix("_:") {
         SimpleTerm::BlankNode(BnodeId::new_unchecked(rest.into()))
     } else if s.starts_with('"') {
-        // Literal: try to parse "lexical"^^<datatype> or "lexical"@lang
-        // For simplicity, treat the whole string as a plain literal's lexical form
-        // by stripping outer quotes.
-        let inner = s.trim_start_matches('"');
-        // Find the closing quote
-        if let Some(close) = inner.find('"') {
-            let lexical = &inner[..close];
-            let rest = &inner[close + 1..];
-            if let Some(lang) = rest.strip_prefix('@') {
+        if let Some(parts) = crate::rdf::parse_literal(s) {
+            if let Some(lang) = parts.language {
                 SimpleTerm::LiteralLanguage(
-                    lexical.into(),
+                    parts.lexical.into(),
                     sophia_api::term::language_tag::LanguageTag::new_unchecked(lang.into()),
+                    None,
                 )
-            } else if let Some(dt) = rest.strip_prefix("^^<") {
-                let dt = dt.trim_end_matches('>');
-                SimpleTerm::LiteralDatatype(lexical.into(), IriRef::new_unchecked(dt.into()))
+            } else if let Some(dt) = parts.datatype {
+                SimpleTerm::LiteralDatatype(parts.lexical.into(), IriRef::new_unchecked(dt.into()))
             } else {
-                // Plain string literal
                 SimpleTerm::LiteralDatatype(
-                    lexical.into(),
+                    parts.lexical.into(),
                     IriRef::new_unchecked(XSD_STRING.into()),
                 )
             }
@@ -84,11 +76,16 @@ fn term_to_string(t: impl Term) -> String {
         sophia_api::term::TermKind::Literal => {
             let lex = t.lexical_form().unwrap_or_else(|| "".into());
             if let Some(lang) = t.language_tag() {
-                format!("\"{}\"@{}", lex, lang.as_str())
+                crate::rdf::render_literal(&lex, Some(lang.as_str()), None)
             } else if let Some(dt) = t.datatype() {
-                format!("\"{}\"^^<{}>", lex, dt.as_str())
+                let datatype = dt.as_str();
+                if datatype == XSD_STRING {
+                    crate::rdf::render_literal(&lex, None, None)
+                } else {
+                    crate::rdf::render_literal(&lex, None, Some(datatype))
+                }
             } else {
-                format!("\"{}\"", lex)
+                crate::rdf::render_literal(&lex, None, None)
             }
         }
         sophia_api::term::TermKind::Variable => t
@@ -107,14 +104,17 @@ impl Graph for KnowledgeGraph {
     type Triple<'x> = [SimpleTerm<'x>; 3];
     type Error = std::convert::Infallible;
 
-    fn triples(&self) -> GTripleSource<'_, Self> {
-        Box::new(self.triples().map(|t| {
+    fn triples(
+        &self,
+    ) -> impl Iterator<Item = Result<<Self as Graph>::Triple<'_>, <Self as Graph>::Error>> + '_
+    {
+        self.triples().map(|t| {
             Ok([
                 str_to_term(t.subject().as_str()),
                 str_to_term(t.predicate().as_str()),
                 str_to_term(t.object().as_str()),
             ])
-        }))
+        })
     }
 }
 
@@ -149,9 +149,11 @@ impl MutableGraph for KnowledgeGraph {
 }
 
 impl CollectibleGraph for KnowledgeGraph {
+    type CollectError = std::convert::Infallible;
+
     fn from_triple_source<TS: TripleSource>(
         triples: TS,
-    ) -> StreamResult<Self, TS::Error, Self::Error> {
+    ) -> StreamResult<Self, TS::Error, Self::CollectError> {
         let mut kg = KnowledgeGraph::new();
         let mut triples = triples;
         triples.try_for_each_triple(|t| -> Result<(), std::convert::Infallible> {
@@ -173,7 +175,7 @@ mod tests {
     use crate::Triple as LxTriple;
     use sophia_api::graph::Graph as SophiaGraph;
     use sophia_api::ns::Namespace;
-    use sophia_api::source::IntoTripleSource;
+    use sophia_api::source::IntoSource;
     use sophia_api::term::matcher::Any;
     use sophia_api::term::SimpleTerm;
 
@@ -279,8 +281,7 @@ mod tests {
             .collect();
 
         let rebuilt: KnowledgeGraph =
-            CollectibleGraph::from_triple_source(triples_vec.into_iter().into_triple_source())
-                .unwrap();
+            CollectibleGraph::from_triple_source(triples_vec.into_iter().into_source()).unwrap();
         assert_eq!(rebuilt.triple_count(), 3);
     }
 

@@ -3,11 +3,10 @@
 //! Computes node importance relative to a specific seed entity,
 //! measuring proximity in the graph's link structure.
 //!
-//! The core power-iteration algorithm is provided by [`graphops`];
-//! this module wraps it with a `KnowledgeGraph`-specific API that maps
-//! petgraph node indices back to entity IDs.
+//! The power iteration runs over unique neighbor nodes, so parallel triples
+//! do not act as implicit edge weights.
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// PPR configuration.
@@ -34,7 +33,7 @@ impl Default for PprConfig {
 
 /// Compute personalized PageRank from a seed entity.
 ///
-/// Returns scores keyed by entity ID string. Higher scores indicate
+/// Returns scores keyed by entity ID. Higher scores indicate
 /// entities closer/more connected to the seed in the graph's link structure.
 ///
 /// Returns an empty map if the graph is empty or the seed entity is not found.
@@ -54,11 +53,12 @@ impl Default for PprConfig {
 /// assert!(scores.contains_key("Bob"));
 /// ```
 #[must_use]
+#[allow(clippy::cast_precision_loss)]
 pub fn personalized_pagerank(
     kg: &KnowledgeGraph,
     seed: &str,
     config: PprConfig,
-) -> HashMap<String, f64> {
+) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
@@ -72,23 +72,63 @@ pub fn personalized_pagerank(
         None => return HashMap::new(),
     };
 
-    // Build personalization vector: 1.0 for seed, 0.0 elsewhere
     let mut personalization = vec![0.0; n];
     personalization[seed_idx] = 1.0;
 
-    let gp_config = graphops::pagerank::PageRankConfig {
-        damping: config.damping,
-        max_iterations: config.max_iterations,
-        tolerance: config.tolerance,
-    };
+    let adjacency: Vec<Vec<_>> = graph
+        .node_indices()
+        .map(|idx| {
+            crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Outgoing)
+                .into_iter()
+                .map(|n| n.index())
+                .collect()
+        })
+        .collect();
 
-    let scores = graphops::ppr::personalized_pagerank(graph, gp_config, &personalization);
+    let mut scores = personalization.clone();
+    let mut next = vec![0.0; n];
 
-    // Map indices back to entity IDs
+    for _ in 0..config.max_iterations {
+        for (idx, value) in next.iter_mut().enumerate() {
+            *value = (1.0 - config.damping) * personalization[idx];
+        }
+
+        let dangling: f64 = adjacency
+            .iter()
+            .enumerate()
+            .filter(|(_, neighbors)| neighbors.is_empty())
+            .map(|(idx, _)| scores[idx])
+            .sum();
+        let dangling_share = config.damping * dangling;
+        for (idx, value) in next.iter_mut().enumerate() {
+            *value += dangling_share * personalization[idx];
+        }
+
+        for (src, neighbors) in adjacency.iter().enumerate() {
+            if neighbors.is_empty() {
+                continue;
+            }
+            let share = config.damping * scores[src] / neighbors.len() as f64;
+            for &dst in neighbors {
+                next[dst] += share;
+            }
+        }
+
+        let diff: f64 = scores
+            .iter()
+            .zip(next.iter())
+            .map(|(old, new)| (old - new).abs())
+            .sum();
+        std::mem::swap(&mut scores, &mut next);
+        if diff < config.tolerance {
+            break;
+        }
+    }
+
     let mut result = HashMap::with_capacity(n);
     for (idx, score) in scores.into_iter().enumerate() {
         let entity = &graph[petgraph::graph::NodeIndex::new(idx)];
-        result.insert(entity.id.as_str().to_owned(), score);
+        result.insert(entity.id.clone(), score);
     }
     result
 }

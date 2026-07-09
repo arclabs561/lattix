@@ -241,8 +241,9 @@ impl KnowledgeGraph {
                 continue;
             }
 
-            let triple = Triple::from_ntriples(line)
-                .map_err(|_| Error::InvalidNTriples(format!("line {}: {}", line_no + 1, line)))?;
+            let triple = Triple::from_ntriples(line).map_err(|e| {
+                Error::InvalidNTriples(format!("line {}: {} ({})", line_no + 1, line, e))
+            })?;
             kg.add_triple(triple);
         }
 
@@ -277,23 +278,21 @@ impl KnowledgeGraph {
         Ok(())
     }
 
-    /// Load from binary file (bincode).
+    /// Load from binary file.
     #[cfg(feature = "binary")]
     pub fn from_binary_file(path: impl AsRef<Path>) -> Result<Self> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
+        let bytes = std::fs::read(path)?;
         let mut kg: Self =
-            bincode::deserialize_from(reader).map_err(|e| Error::Serialization(e.into()))?;
+            postcard::from_bytes(&bytes).map_err(|e| Error::Serialization(e.into()))?;
         kg.rebuild_indexes();
         Ok(kg)
     }
 
-    /// Save to binary file (bincode).
+    /// Save to binary file.
     #[cfg(feature = "binary")]
     pub fn to_binary_file(&self, path: impl AsRef<Path>) -> Result<()> {
-        let file = File::create(path)?;
-        let mut writer = std::io::BufWriter::new(file);
-        bincode::serialize_into(&mut writer, self).map_err(|e| Error::Serialization(e.into()))?;
+        let bytes = postcard::to_allocvec(self).map_err(|e| Error::Serialization(e.into()))?;
+        std::fs::write(path, bytes)?;
         Ok(())
     }
 
@@ -502,8 +501,8 @@ impl KnowledgeGraph {
         }
     }
 
-    /// Find a path between two entities, returning the sequence of triples (edges)
-    /// along the shortest path. Returns `None` if no path exists.
+    /// Find a directed shortest path between two entities, returning the sequence
+    /// of triples along the path. Returns `None` if no path exists.
     pub fn find_path(
         &self,
         from: impl Into<EntityId>,
@@ -515,34 +514,59 @@ impl KnowledgeGraph {
         let from_idx = self.entity_index.get(&from)?;
         let to_idx = self.entity_index.get(&to)?;
 
-        use petgraph::algo::astar;
+        if from_idx == to_idx {
+            return Some(Vec::new());
+        }
 
-        let path = astar(&self.graph, *from_idx, |n| n == *to_idx, |_| 1, |_| 0)?;
+        let mut visited = HashSet::from([*from_idx]);
+        let mut parents: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut queue = VecDeque::from([*from_idx]);
+
+        while let Some(node) = queue.pop_front() {
+            let mut neighbors: Vec<_> = self
+                .graph
+                .neighbors_directed(node, petgraph::Direction::Outgoing)
+                .collect();
+            neighbors.sort_unstable_by_key(|idx| idx.index());
+            neighbors.dedup();
+
+            for next in neighbors {
+                if !visited.insert(next) {
+                    continue;
+                }
+                parents.insert(next, node);
+                if next == *to_idx {
+                    queue.clear();
+                    break;
+                }
+                queue.push_back(next);
+            }
+        }
+
+        if !parents.contains_key(to_idx) {
+            return None;
+        }
+
+        let mut nodes = vec![*to_idx];
+        let mut cursor = *to_idx;
+        while cursor != *from_idx {
+            cursor = *parents.get(&cursor)?;
+            nodes.push(cursor);
+        }
+        nodes.reverse();
 
         // Convert path to triples using graph edges (O(d) per hop, not O(N))
         let mut triples = Vec::new();
-        let nodes: Vec<_> = path.1;
 
         for window in nodes.windows(2) {
             let (src, dst) = (window[0], window[1]);
 
-            // Find edge between src and dst
-            if let Some(edge) = self.graph.find_edge(src, dst) {
-                let relation = &self.graph[edge];
-                let src_entity = &self.graph[src];
-                let dst_entity = &self.graph[dst];
-                let mut t = Triple::new(
-                    src_entity.id.clone(),
-                    relation.relation_type.clone(),
-                    dst_entity.id.clone(),
-                );
-                if let Some(c) = relation.confidence {
-                    t = t.with_confidence(c);
-                }
-                if let Some(ref s) = relation.source {
-                    t = t.with_source(s.clone());
-                }
-                triples.push(t);
+            let src_entity = &self.graph[src];
+            let dst_entity = &self.graph[dst];
+            if let Some(triple) = self.triples.iter().find(|triple| {
+                triple.subject() == &src_entity.id && triple.object() == &dst_entity.id
+            }) {
+                triples.push(triple.clone());
             }
         }
 
@@ -567,6 +591,26 @@ impl KnowledgeGraph {
     /// Iterate over all triples.
     pub fn triples(&self) -> impl Iterator<Item = &Triple> {
         self.triples.iter()
+    }
+
+    pub(crate) fn triple_at_index(&self, idx: usize) -> Option<&Triple> {
+        self.triples.get(idx)
+    }
+
+    pub(crate) fn all_triple_indices(&self) -> std::ops::Range<usize> {
+        0..self.triples.len()
+    }
+
+    pub(crate) fn subject_indices(&self, subject: &EntityId) -> Option<&[usize]> {
+        self.subject_index.get(subject).map(Vec::as_slice)
+    }
+
+    pub(crate) fn object_indices(&self, object: &EntityId) -> Option<&[usize]> {
+        self.object_index.get(object).map(Vec::as_slice)
+    }
+
+    pub(crate) fn predicate_indices(&self, predicate: &RelationType) -> Option<&[usize]> {
+        self.predicate_index.get(predicate).map(Vec::as_slice)
     }
 
     /// Get the underlying petgraph for advanced operations.
@@ -641,7 +685,7 @@ impl KnowledgeGraph {
     /// kg.add_triple(Triple::new("Alice", "knows", "Bob"));
     /// kg.add_triple(Triple::new("Alice", "works_at", "Acme"));
     ///
-    /// let results = kg.query().subject("Alice").predicate("knows").execute();
+    /// let results: Vec<_> = kg.query().subject("Alice").predicate("knows").execute().collect();
     /// assert_eq!(results.len(), 1);
     /// ```
     pub fn query(&self) -> crate::query::TripleQuery<'_> {

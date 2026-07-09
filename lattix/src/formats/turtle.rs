@@ -1,4 +1,4 @@
-//! Turtle format (RDF 1.2).
+//! Turtle format.
 //!
 //! Human-readable RDF serialization with prefix support.
 //!
@@ -7,14 +7,14 @@
 use super::oxrdf_helpers::{subject_to_string, term_to_string};
 use crate::{KnowledgeGraph, Result, Triple};
 use oxttl::TurtleParser;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Write};
 
 /// Turtle format handler.
 ///
 /// Reads Turtle syntax (with prefix declarations and base IRIs) via
-/// [`oxttl::TurtleParser`]. Writing produces N-Triples-compatible output
-/// grouped by subject -- no prefix compression on output.
+/// [`oxttl::TurtleParser`]. Writing groups triples by subject and uses
+/// configured prefixes when a term has a simple local name.
 pub struct Turtle;
 
 impl Turtle {
@@ -52,7 +52,7 @@ impl Turtle {
                 result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
             let s = subject_to_string(&triple.subject);
-            let p = triple.predicate.as_str().to_string();
+            let p = crate::rdf::iri_to_string(triple.predicate.as_str());
             let o = term_to_string(&triple.object);
 
             kg.add_triple(Triple::new(s, p, o));
@@ -63,9 +63,9 @@ impl Turtle {
 
     /// Write knowledge graph to Turtle format.
     ///
-    /// Outputs N-Triples-compatible syntax grouped by subject (no prefix
-    /// compression). Multiple predicates for the same subject are joined
-    /// with `;`.
+    /// Outputs Turtle syntax grouped by subject. Multiple predicates for the
+    /// same subject are joined with `;`, and configured prefixes are used when
+    /// a term has a simple local name.
     ///
     /// # Example
     ///
@@ -87,11 +87,22 @@ impl Turtle {
     pub fn write<W: Write>(
         kg: &KnowledgeGraph,
         mut writer: W,
-        _prefixes: &HashMap<String, String>,
+        prefixes: &HashMap<String, String>,
     ) -> Result<()> {
-        // Group by subject for readability
-        let mut by_subject: std::collections::HashMap<&str, Vec<_>> =
-            std::collections::HashMap::new();
+        let prefixes: BTreeMap<_, _> = prefixes.iter().collect();
+        for (prefix, iri) in &prefixes {
+            writeln!(
+                writer,
+                "@prefix {}: <{}> .",
+                prefix,
+                crate::rdf::escape_iri(iri)
+            )?;
+        }
+        if !prefixes.is_empty() {
+            writeln!(writer)?;
+        }
+
+        let mut by_subject: BTreeMap<&str, Vec<_>> = BTreeMap::new();
         for triple in kg.triples() {
             by_subject
                 .entry(triple.subject().as_str())
@@ -99,21 +110,18 @@ impl Turtle {
                 .push(triple);
         }
 
-        for (subject, triples) in &by_subject {
-            let s = if subject.starts_with("_:") {
-                subject.to_string()
-            } else {
-                format!("<{}>", subject)
-            };
+        for (subject, triples) in &mut by_subject {
+            triples.sort_by(|a, b| {
+                a.predicate()
+                    .as_str()
+                    .cmp(b.predicate().as_str())
+                    .then_with(|| a.object().as_str().cmp(b.object().as_str()))
+            });
+            let s = render_term(subject, &prefixes);
 
             for (i, triple) in triples.iter().enumerate() {
-                let p = format!("<{}>", triple.predicate().as_str());
-                let obj = triple.object().as_str();
-                let o = if obj.starts_with("_:") || obj.starts_with('"') {
-                    obj.to_string()
-                } else {
-                    format!("<{}>", obj)
-                };
+                let p = render_term(triple.predicate().as_str(), &prefixes);
+                let o = render_term(triple.object().as_str(), &prefixes);
 
                 if i == 0 {
                     write!(writer, "{} {} {}", s, p, o)?;
@@ -139,6 +147,40 @@ impl Turtle {
         Self::write_default(kg, &mut buf)?;
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
+}
+
+fn render_term(s: &str, prefixes: &BTreeMap<&String, &String>) -> String {
+    if s.starts_with("_:") {
+        return s.to_string();
+    }
+    if s.starts_with('"') {
+        return crate::rdf::render_object(s);
+    }
+
+    let iri = s
+        .strip_prefix('<')
+        .and_then(|s| s.strip_suffix('>'))
+        .unwrap_or(s);
+
+    if let Some((prefix, local)) = prefixes
+        .iter()
+        .filter_map(|(prefix, base)| {
+            let local = iri.strip_prefix(base.as_str())?;
+            is_simple_local_name(local).then_some((*prefix, *base, local))
+        })
+        .max_by_key(|(_, base, _)| base.len())
+        .map(|(prefix, _, local)| (prefix, local))
+    {
+        return format!("{prefix}:{local}");
+    }
+
+    format!("<{}>", crate::rdf::iri_body_for(iri))
+}
+
+fn is_simple_local_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.'))
 }
 
 /// Default prefixes for common vocabularies.

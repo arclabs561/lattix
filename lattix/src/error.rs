@@ -34,7 +34,7 @@ pub enum Error {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
-    /// Serialization/deserialization error (bincode, etc.).
+    /// Serialization/deserialization error.
     #[error("serialization error: {0}")]
     Serialization(Box<dyn std::error::Error + Send + Sync>),
 }

@@ -1,4 +1,4 @@
-//! N-Triples format (RDF 1.2).
+//! N-Triples format.
 //!
 //! Line-based, simple format for RDF triples.
 //! Each line is: `<subject> <predicate> <object> .`
@@ -12,24 +12,12 @@ use std::io::{Read, Write};
 
 /// Write a lattix string as an N-Triples subject/predicate term (IRI or blank node).
 fn write_nt_subject(w: &mut impl Write, s: &str) -> std::io::Result<()> {
-    if s.starts_with("_:") {
-        w.write_all(s.as_bytes())
-    } else {
-        w.write_all(b"<")?;
-        w.write_all(s.as_bytes())?;
-        w.write_all(b">")
-    }
+    w.write_all(crate::rdf::render_iri_or_blank(s).as_bytes())
 }
 
 /// Write a lattix string as an N-Triples object term (IRI, blank node, or literal).
 fn write_nt_object(w: &mut impl Write, s: &str) -> std::io::Result<()> {
-    if s.starts_with("_:") || s.starts_with('"') {
-        w.write_all(s.as_bytes())
-    } else {
-        w.write_all(b"<")?;
-        w.write_all(s.as_bytes())?;
-        w.write_all(b">")
-    }
+    w.write_all(crate::rdf::render_object(s).as_bytes())
 }
 
 /// N-Triples format handler.
@@ -63,7 +51,7 @@ impl NTriples {
                 result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
             let s = subject_to_string(&triple.subject);
-            let p = triple.predicate.as_str().to_string();
+            let p = crate::rdf::iri_to_string(triple.predicate.as_str());
             let o = term_to_string(&triple.object);
 
             kg.add_triple(Triple::new(s, p, o));
@@ -97,7 +85,7 @@ impl NTriples {
         for triple in kg.triples() {
             write_nt_subject(&mut writer, triple.subject().as_str())?;
             writer.write_all(b" <")?;
-            writer.write_all(triple.predicate().as_str().as_bytes())?;
+            writer.write_all(crate::rdf::iri_body_for(triple.predicate().as_str()).as_bytes())?;
             writer.write_all(b"> ")?;
             write_nt_object(&mut writer, triple.object().as_str())?;
             writer.write_all(b" .\n")?;

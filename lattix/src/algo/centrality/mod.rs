@@ -7,13 +7,18 @@
 //!
 //! | Algorithm | Question Answered | Complexity |
 //! |-----------|-------------------|------------|
-//! | Degree | How many connections? | O(V) |
-//! | Betweenness | How often on shortest paths? | O(VE) |
-//! | Closeness | How close to all others? | O(VE) |
-//! | Eigenvector | Connected to important nodes? | O(V² × iterations) |
-//! | Katz | Reachable via damped paths? | O(V² × iterations) |
-//! | PageRank | Where do random walks end? | O(E × iterations) |
-//! | HITS | Hub or authority? | O(E × iterations) |
+//! These complexities include the cost of deduplicating parallel triples into
+//! unique neighbor nodes, where `d_max` is the maximum stored degree.
+//!
+//! | Algorithm | Question Answered | Complexity |
+//! |-----------|-------------------|------------|
+//! | Degree | How many connections? | O(V + E log d_max) |
+//! | Betweenness | How often on shortest paths? | O(VE log d_max) |
+//! | Closeness | How close to all others? | O(VE log d_max) |
+//! | Eigenvector | Connected to important nodes? | O(E log d_max × iterations) |
+//! | Katz | Reachable via damped paths? | O(E log d_max × iterations) |
+//! | PageRank | Where do random walks end? | O(E log d_max + E × iterations) |
+//! | HITS | Hub or authority? | O(E log d_max × iterations) |
 //!
 //! # Choosing the Right Measure
 //!

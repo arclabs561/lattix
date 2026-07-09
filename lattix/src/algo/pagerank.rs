@@ -3,11 +3,10 @@
 //! Computes the importance of nodes based on link structure.
 //! Higher scores indicate more "important" nodes.
 //!
-//! The core power-iteration algorithm is provided by [`graphops`];
-//! this module wraps it with a `KnowledgeGraph`-specific API that maps
-//! petgraph node indices back to entity IDs.
+//! The power iteration runs over unique neighbor nodes, so parallel triples
+//! do not act as implicit edge weights.
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// `PageRank` configuration.
@@ -36,29 +35,70 @@ impl Default for PageRankConfig {
 ///
 /// Returns a map of `EntityId` -> Score, where scores sum to 1.0.
 ///
-/// Delegates to [`graphops::pagerank::pagerank`] for the core iteration
-/// and maps petgraph node indices back to entity IDs.
 #[must_use]
-pub fn pagerank(kg: &KnowledgeGraph, config: PageRankConfig) -> HashMap<String, f64> {
+#[allow(clippy::cast_precision_loss)]
+pub fn pagerank(kg: &KnowledgeGraph, config: PageRankConfig) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
         return HashMap::new();
     }
 
-    let gp_config = graphops::pagerank::PageRankConfig {
-        damping: config.damping_factor,
-        max_iterations: config.max_iterations,
-        tolerance: config.tolerance,
-    };
+    let adjacency: Vec<Vec<_>> = graph
+        .node_indices()
+        .map(|idx| {
+            crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Outgoing)
+                .into_iter()
+                .map(|n| n.index())
+                .collect()
+        })
+        .collect();
 
-    let scores = graphops::pagerank::pagerank(graph, gp_config);
+    let n_f = n as f64;
+    let damping = config.damping_factor;
+    let teleport = (1.0 - damping) / n_f;
+    let mut scores = vec![1.0 / n_f; n];
+    let mut next = vec![0.0; n];
 
-    // Map indices back to entity IDs
+    for _ in 0..config.max_iterations {
+        next.fill(teleport);
+
+        let dangling: f64 = adjacency
+            .iter()
+            .enumerate()
+            .filter(|(_, neighbors)| neighbors.is_empty())
+            .map(|(idx, _)| scores[idx])
+            .sum();
+        let dangling_share = damping * dangling / n_f;
+        for score in &mut next {
+            *score += dangling_share;
+        }
+
+        for (src, neighbors) in adjacency.iter().enumerate() {
+            if neighbors.is_empty() {
+                continue;
+            }
+            let share = damping * scores[src] / neighbors.len() as f64;
+            for &dst in neighbors {
+                next[dst] += share;
+            }
+        }
+
+        let diff: f64 = scores
+            .iter()
+            .zip(next.iter())
+            .map(|(old, new)| (old - new).abs())
+            .sum();
+        std::mem::swap(&mut scores, &mut next);
+        if diff < config.tolerance {
+            break;
+        }
+    }
+
     let mut result = HashMap::with_capacity(n);
     for (idx, score) in scores.into_iter().enumerate() {
         let entity = &graph[petgraph::graph::NodeIndex::new(idx)];
-        result.insert(entity.id.as_str().to_owned(), score);
+        result.insert(entity.id.clone(), score);
     }
     result
 }

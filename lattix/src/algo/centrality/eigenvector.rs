@@ -43,7 +43,7 @@
 //! - Bonacich (1972). "Factoring and weighting approaches to status scores"
 //! - Bonacich (1987). "Power and centrality: A family of measures"
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// Configuration for eigenvector centrality.
@@ -71,7 +71,7 @@ impl Default for EigenvectorConfig {
 ///
 /// # Complexity
 ///
-/// - Time: O(E × iterations)
+/// - Time: O(E log d_max × iterations) with parallel-edge deduplication
 /// - Space: O(V)
 ///
 /// # Example
@@ -97,7 +97,7 @@ impl Default for EigenvectorConfig {
 pub fn eigenvector_centrality(
     kg: &KnowledgeGraph,
     config: EigenvectorConfig,
-) -> HashMap<String, f64> {
+) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
@@ -116,11 +116,9 @@ pub fn eigenvector_centrality(
         for idx in graph.node_indices() {
             // Get predecessors (nodes pointing to this node)
             let predecessors: Vec<_> = if config.undirected {
-                graph.neighbors_undirected(idx).collect()
+                crate::algo::unique_neighbors_undirected(graph, idx)
             } else {
-                graph
-                    .neighbors_directed(idx, petgraph::Direction::Incoming)
-                    .collect()
+                crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Incoming)
             };
 
             // Sum scores of predecessors
@@ -160,7 +158,7 @@ pub fn eigenvector_centrality(
     // Map to entity IDs
     graph
         .node_indices()
-        .map(|idx| (graph[idx].id.as_str().to_owned(), scores[idx.index()]))
+        .map(|idx| (graph[idx].id.clone(), scores[idx.index()]))
         .collect()
 }
 

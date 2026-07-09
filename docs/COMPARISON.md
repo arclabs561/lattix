@@ -37,7 +37,7 @@
 |---------|---------|---------|
 | **Implementation** | Rust | Python |
 | **Scale** | Medium/Large (Millions of nodes) | Small/Medium (<100k nodes) |
-| **RDF Support** | Native (Rio) | Via plugins (rdflib) |
+| **RDF Support** | Native (`oxttl`/`oxrdf`) | Via plugins (rdflib) |
 
 **Summary:** `lattix` targets larger knowledge graph workloads and exposes Python bindings through `lattix-py`.
 

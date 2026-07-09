@@ -88,29 +88,30 @@ let neighbors = if let Some(idx) = kg.get_node_index(&entity_id) {
 };
 ```
 
-## 7. `relation_types()` Caching (FIXED)
+## 7. `relation_types()` From Predicate Index (FIXED)
 
 ### Current Implementation
 ```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeGraph {
     // ...
-    #[serde(skip, default)]
-    relation_type_cache: HashSet<RelationType>,
+    predicate_index: HashMap<RelationType, Vec<usize>>,
 }
 
 pub fn add_triple(&mut self, triple: Triple) {
     // ...
-    self.relation_type_cache.insert(triple.predicate.clone());
+    self.predicate_index
+        .entry(triple.predicate.clone())
+        .or_default()
+        .push(triple_idx);
     // ...
 }
 
 pub fn relation_types(&self) -> Vec<&RelationType> {
-    self.relation_type_cache.iter().collect()  // O(|R|)
+    self.predicate_index.keys().collect()  // O(|R|)
 }
 
 pub fn relation_type_count(&self) -> usize {
-    self.relation_type_cache.len()  // O(1)
+    self.predicate_index.len()  // O(1)
 }
 ```
 
@@ -123,7 +124,7 @@ pub fn relation_type_count(&self) -> usize {
 | SCC vs WCC | Medium | **FIXED** (WCC default, --strong for SCC) |
 | Sampling O(N) | High | **FIXED** (O(1) index lookup) |
 | relations_from O(N) | High | **FIXED** (O(d) via subject_index) |
-| relation_types O(N log N) | Low | **FIXED** (O(1) via HashSet cache) |
+| relation_types O(N log N) | Low | **FIXED** (O(|R|) from predicate index keys) |
 | Triple duplication | Low | Accepted trade-off for O(1) queries |
 
 ## Performance Characteristics
@@ -139,7 +140,7 @@ pub fn relation_type_count(&self) -> usize {
 | `has_edge` | O(d) via petgraph |
 | `relation_types` | O(|R|) where R = unique relations |
 | `relation_type_count` | O(1) |
-| `find_path` | O((V + E) log V) via A* |
+| `find_path` | O(V + E log d_max) via BFS with per-node neighbor dedup |
 | Random walk step (biased) | O(1) expected |
 | PageRank iteration | O(V + E) |
 | Connected components | O(V + E) |

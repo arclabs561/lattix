@@ -51,7 +51,7 @@
 //! - Brandes (2001). "A faster algorithm for betweenness centrality"
 //! - Freeman (1977). "A set of measures of centrality based on betweenness"
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use petgraph::graph::NodeIndex;
 use std::collections::{HashMap, VecDeque};
 
@@ -77,7 +77,7 @@ impl Default for BetweennessConfig {
 ///
 /// # Complexity
 ///
-/// - Time: O(VE) for unweighted graphs
+/// - Time: O(VE log d_max) for stored graphs with parallel-edge deduplication
 /// - Space: O(V + E)
 ///
 /// # Example
@@ -103,13 +103,13 @@ impl Default for BetweennessConfig {
 pub fn betweenness_centrality(
     kg: &KnowledgeGraph,
     config: BetweennessConfig,
-) -> HashMap<String, f64> {
+) -> HashMap<EntityId, f64> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n < 2 {
         return graph
             .node_indices()
-            .map(|idx| (graph[idx].id.as_str().to_owned(), 0.0))
+            .map(|idx| (graph[idx].id.clone(), 0.0))
             .collect();
     }
 
@@ -157,7 +157,7 @@ pub fn betweenness_centrality(
     // Map back to entity IDs
     graph
         .node_indices()
-        .map(|idx| (graph[idx].id.as_str().to_owned(), betweenness[idx.index()]))
+        .map(|idx| (graph[idx].id.clone(), betweenness[idx.index()]))
         .collect()
 }
 
@@ -192,11 +192,9 @@ fn bfs_shortest_paths(
 
         // Get neighbors based on direction setting
         let neighbors: Vec<NodeIndex> = if undirected {
-            graph.neighbors_undirected(v).collect()
+            crate::algo::unique_neighbors_undirected(graph, v)
         } else {
-            graph
-                .neighbors_directed(v, petgraph::Direction::Outgoing)
-                .collect()
+            crate::algo::unique_neighbors_directed(graph, v, petgraph::Direction::Outgoing)
         };
 
         for w in neighbors {

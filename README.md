@@ -37,18 +37,23 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 - **Heterogeneous graphs**: `HeteroGraph` with typed nodes and edges (for RGCN, HGT, link prediction)
 - **Hypergraphs**: `HyperTriple` (qualifier-based, Wikidata-style) and `HyperEdge` (role-based n-ary relations)
 - **Algorithms**: PageRank, HITS, degree/betweenness/closeness/eigenvector/Katz centrality, random walks, connected components, neighbor sampling
-- **Formats**: N-Triples, N-Quads, Turtle, JSON-LD, CSV (all opt-in via `formats` feature)
+- **Formats**: N-Triples, N-Quads, Turtle, JSON-LD, CSV (enabled by default via `formats`)
 
 ## Features
 
 | Feature | Default | What it enables |
 |---------|---------|-----------------|
-| `formats` | yes | RDF parsing/serialization (N-Triples, Turtle, N-Quads, JSON-LD, CSV) |
+| `formats` | yes | RDF and CSV readers/writers (N-Triples, Turtle, N-Quads, JSON-LD, CSV) |
 | `algo` | yes | Centrality algorithms, PageRank, random walks, sampling (pulls in `rand`, `rayon`) |
-| `binary` | no | Bincode serialization |
+| `binary` | no | Postcard serialization |
 | `sophia` | no | Sophia RDF framework integration |
 
-Use `cargo add lattix --no-default-features` for core types, petgraph, and serde only.
+Use `cargo add lattix --no-default-features` for core graph types without the
+`formats` or `algo` modules.
+
+RDF support maps RDF terms onto lattix's string triple model. IRIs and blank
+nodes round trip directly; literals are stored in their N-Triples lexical form.
+RDF 1.2 triple terms are not part of the public graph model.
 
 ## Starting points
 

@@ -120,11 +120,13 @@
 //!
 //! # Serialization Formats (requires `formats` feature)
 //!
-//! Supports modern RDF 1.2 specifications (2024):
+//! Supports RDF syntax through a string-based lattix triple model:
 //! - N-Triples - Line-based, simple (fastest parsing)
 //! - N-Quads - N-Triples with named graphs
 //! - Turtle - Human-readable (best for debugging)
 //! - JSON-LD - Linked data (web integration)
+//!
+//! RDF triple terms and typed RDF terms are not part of the public graph model.
 //!
 //! # Algorithms (requires `algo` feature)
 //!
@@ -187,6 +189,7 @@ pub mod hyper;
 #[cfg(feature = "kge")]
 pub mod kge;
 mod query;
+mod rdf;
 mod relation;
 mod triple;
 

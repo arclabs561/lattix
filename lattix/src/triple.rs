@@ -2,7 +2,7 @@
 //!
 //! A triple represents a (subject, predicate, object) statement.
 
-use crate::{EntityId, Error, RelationType, Result};
+use crate::{EntityId, RelationType, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -106,132 +106,16 @@ impl Triple {
     /// let triple = Triple::from_ntriples(line).unwrap();
     /// ```
     pub fn from_ntriples(line: &str) -> Result<Self> {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            return Err(Error::ParseTriple("Empty or comment line".into()));
-        }
-
-        // Simple N-Triples parser
-        // Format: <subject> <predicate> <object> .
-        // Handles IRIs (<...>), blank nodes (_:xxx), and literals ("...")
-        let mut parts = Vec::new();
-        let mut current = String::new();
-        let mut in_uri = false;
-        let mut in_literal = false;
-        let mut in_bnode = false;
-        let mut escape_next = false;
-
-        for c in line.chars() {
-            if escape_next {
-                current.push(c);
-                escape_next = false;
-                continue;
-            }
-
-            match c {
-                '\\' => {
-                    escape_next = true;
-                    current.push(c);
-                }
-                '<' if !in_literal && !in_bnode && current.is_empty() => {
-                    in_uri = true;
-                }
-                // Datatype IRI in literal suffix: "42"^^<xsd:integer>
-                '<' if !in_literal && !in_bnode && !current.is_empty() => {
-                    current.push(c);
-                }
-                '>' if in_uri && !in_literal => {
-                    in_uri = false;
-                    parts.push(current.clone());
-                    current.clear();
-                }
-                // Closing > for datatype IRI in literal suffix
-                '>' if !in_uri && !in_literal && !current.is_empty() => {
-                    current.push(c);
-                }
-                '"' if !in_uri && !in_bnode => {
-                    in_literal = !in_literal;
-                    current.push(c);
-                }
-                // Blank node: starts with _: when not inside another term
-                '_' if !in_uri && !in_literal && !in_bnode && current.is_empty() => {
-                    in_bnode = true;
-                    current.push(c);
-                }
-                // Blank node ends at whitespace
-                ' ' | '\t' if in_bnode => {
-                    in_bnode = false;
-                    parts.push(current.clone());
-                    current.clear();
-                }
-                // Whitespace outside any term: flush accumulated token (literal suffix, etc.)
-                ' ' | '\t' if !in_uri && !in_literal && !in_bnode && !current.is_empty() => {
-                    parts.push(current.clone());
-                    current.clear();
-                }
-                '.' if !in_uri && !in_literal && !in_bnode && current.is_empty() => {
-                    // End of triple
-                    break;
-                }
-                _ if in_uri || in_literal || in_bnode => {
-                    current.push(c);
-                }
-                // Accumulate literal suffixes (@en, ^^<datatype>) after closing quote
-                _ if !current.is_empty() => {
-                    current.push(c);
-                }
-                _ => {}
-            }
-        }
-
-        if parts.len() < 3 {
-            return Err(Error::InvalidNTriples(format!(
-                "Expected 3 parts, got {}: {}",
-                parts.len(),
-                line
-            )));
-        }
-
-        Ok(Self::new(
-            parts[0].clone(),
-            parts[1].clone(),
-            parts[2].clone(),
-        ))
+        crate::rdf::parse_ntriples_line(line)
     }
 
     /// Convert to N-Triples format.
     pub fn to_ntriples(&self) -> String {
-        // Minimal RDF-ish rendering:
-        // - Named nodes (IRIs) are written as `<iri>`
-        // - Blank nodes are written as `_:id`
-        // - Literals are written as-is if `self.object` already starts with `"`
-        //
-        // This keeps `Triple` usable in both “simple KG” mode and the `formats` module
-        // (which may store literals in the object position).
-        fn render_iri_or_blank(s: &str) -> String {
-            if s.starts_with("_:") {
-                s.to_string()
-            } else if s.starts_with('<') && s.ends_with('>') {
-                // Accept bracketed form defensively.
-                s.to_string()
-            } else {
-                format!("<{}>", s)
-            }
-        }
-        fn render_object(s: &str) -> String {
-            if s.starts_with('"') || s.starts_with("_:") || (s.starts_with('<') && s.ends_with('>'))
-            {
-                s.to_string()
-            } else {
-                format!("<{}>", s)
-            }
-        }
-
         format!(
             "{} {} {} .",
-            render_iri_or_blank(self.subject.as_str()),
-            render_iri_or_blank(self.predicate.as_str()),
-            render_object(self.object.as_str())
+            crate::rdf::render_iri_or_blank(self.subject.as_str()),
+            crate::rdf::render_iri_or_blank(self.predicate.as_str()),
+            crate::rdf::render_object(self.object.as_str())
         )
     }
 }

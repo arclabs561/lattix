@@ -31,7 +31,7 @@
 //! - A node with 10 low-degree neighbors ranks same as one with 10 hubs
 //! - For structural importance, use eigenvector or betweenness centrality
 
-use crate::KnowledgeGraph;
+use crate::{EntityId, KnowledgeGraph};
 use std::collections::HashMap;
 
 /// Degree centrality result for a node.
@@ -83,7 +83,7 @@ impl DegreeCentrality {
 /// ```
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-pub fn degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, DegreeCentrality> {
+pub fn degree_centrality(kg: &KnowledgeGraph) -> HashMap<EntityId, DegreeCentrality> {
     let graph = kg.as_petgraph();
     let n = graph.node_count();
     if n == 0 {
@@ -94,16 +94,14 @@ pub fn degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, DegreeCentralit
     let mut result = HashMap::with_capacity(n);
 
     for idx in graph.node_indices() {
-        let in_deg = graph
-            .neighbors_directed(idx, petgraph::Direction::Incoming)
-            .count();
-        let out_deg = graph
-            .neighbors_directed(idx, petgraph::Direction::Outgoing)
-            .count();
+        let in_deg =
+            crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Incoming).len();
+        let out_deg =
+            crate::algo::unique_neighbors_directed(graph, idx, petgraph::Direction::Outgoing).len();
 
         let entity = &graph[idx];
         result.insert(
-            entity.id.as_str().to_owned(),
+            entity.id.clone(),
             DegreeCentrality {
                 in_degree: in_deg,
                 out_degree: out_deg,
@@ -120,7 +118,7 @@ pub fn degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, DegreeCentralit
 ///
 /// Returns normalized in-degree for each node.
 #[must_use]
-pub fn in_degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, f64> {
+pub fn in_degree_centrality(kg: &KnowledgeGraph) -> HashMap<EntityId, f64> {
     degree_centrality(kg)
         .into_iter()
         .map(|(k, v)| (k, v.in_normalized))
@@ -131,7 +129,7 @@ pub fn in_degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, f64> {
 ///
 /// Returns normalized out-degree for each node.
 #[must_use]
-pub fn out_degree_centrality(kg: &KnowledgeGraph) -> HashMap<String, f64> {
+pub fn out_degree_centrality(kg: &KnowledgeGraph) -> HashMap<EntityId, f64> {
     degree_centrality(kg)
         .into_iter()
         .map(|(k, v)| (k, v.out_normalized))

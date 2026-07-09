@@ -433,7 +433,7 @@ mod clear_props {
         #![proptest_config(ProptestConfig::with_cases(50))]
 
         /// Clearing a graph must fully reset all state -- no residual data
-        /// in derived indexes (subject_index, object_index, relation_type_cache).
+        /// in derived indexes (subject, object, and predicate indexes).
         #[test]
         fn clear_resets_all_state(
             triples in prop::collection::vec(arb_triple(), 1..50),

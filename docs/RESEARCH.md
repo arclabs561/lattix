@@ -25,9 +25,9 @@
 - **Layout:** Flat workspace (`api`, `turtle`, `xml` at root).
 
 **Relevance to `lattix`:**
-- `lattix-core` currently implements a manual N-Triples parser.
-- Switching to `rio_turtle` and `rio_xml` would add RDF format coverage without the manual parser.
-- **Recommendation:** Replace custom parsing logic in `lattix-core` with `rio` parsers. (Done)
+- Rio is useful prior art, but `lattix` now uses `oxttl` and `oxrdf` from the Oxigraph stack.
+- The old manual N-Triples parser has been removed from the active parsing path.
+- **Recommendation:** Keep the parser surface consolidated on `oxttl`/`oxrdf` unless a specific Rio-only capability is needed.
 
 ## Node2Vec-rs
 **URL:** https://github.com/GregorLueg/node2vec-rs
@@ -65,7 +65,7 @@
         3.  **Alias Sampling**: Implement Alias method for O(1) sampling if memory allows.
 
 ## Actionable Plan
-1.  **Refactor Parsing:** Use `rio` in `lattix-core` for N-Triples/Turtle parsing. (Completed)
+1.  **Refactor Parsing:** Use `oxttl`/`oxrdf` for N-Triples/Turtle parsing. (Completed)
 2.  **Standardize Interfaces:** Investigate implementing `sophia` traits. (Future)
 3.  **Performance:** Verify `lattix` parallel random walks against `pecanpy` benchmarks if comparable inputs are available.
 4.  **Structure:** Maintain `crates/` layout for cleanliness. Ensure all dependencies are managed via workspace.

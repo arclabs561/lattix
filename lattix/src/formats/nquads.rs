@@ -1,4 +1,4 @@
-//! N-Quads format (RDF 1.2).
+//! N-Quads format.
 //!
 //! Extension of N-Triples with named graphs.
 //! Each line is: `<subject> <predicate> <object> <graph> .`
@@ -44,7 +44,7 @@ impl Quad {
             .ok_or_else(|| crate::Error::ParseTriple("No quad found".into()))?;
 
         let s = subject_to_string(&quad.subject);
-        let p = quad.predicate.as_str().to_string();
+        let p = crate::rdf::iri_to_string(quad.predicate.as_str());
         let o = term_to_string(&quad.object);
         let g = graph_name_to_string(&quad.graph_name);
 
@@ -61,7 +61,7 @@ impl Quad {
         let base = base.trim_end_matches(" .");
 
         match &self.graph {
-            Some(g) => format!("{} <{}> .", base, g),
+            Some(g) => format!("{} {} .", base, crate::rdf::render_iri_or_blank(g)),
             None => format!("{} .", base),
         }
     }
@@ -80,7 +80,7 @@ impl NQuads {
                 result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
             let s = subject_to_string(&quad.subject);
-            let p = quad.predicate.as_str().to_string();
+            let p = crate::rdf::iri_to_string(quad.predicate.as_str());
             let o = term_to_string(&quad.object);
             let g = graph_name_to_string(&quad.graph_name);
 
@@ -102,7 +102,7 @@ impl NQuads {
                 result.map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
             let s = subject_to_string(&quad.subject);
-            let p = quad.predicate.as_str().to_string();
+            let p = crate::rdf::iri_to_string(quad.predicate.as_str());
             let o = term_to_string(&quad.object);
 
             kg.add_triple(Triple::new(s, p, o));

@@ -13,15 +13,15 @@ use crate::{EntityId, KnowledgeGraph, RelationType, Triple};
 /// kg.add_triple(Triple::new("Bob", "knows", "Charlie"));
 ///
 /// // Find all triples where Alice is the subject
-/// let results = kg.query().subject("Alice").execute();
+/// let results: Vec<_> = kg.query().subject("Alice").execute().collect();
 /// assert_eq!(results.len(), 2);
 ///
 /// // Find all "knows" triples
-/// let results = kg.query().predicate("knows").execute();
+/// let results: Vec<_> = kg.query().predicate("knows").execute().collect();
 /// assert_eq!(results.len(), 2);
 ///
 /// // Find the specific triple
-/// let results = kg.query().subject("Alice").predicate("knows").execute();
+/// let results: Vec<_> = kg.query().subject("Alice").predicate("knows").execute().collect();
 /// assert_eq!(results.len(), 1);
 /// ```
 pub struct TripleQuery<'a> {
@@ -66,28 +66,30 @@ impl<'a> TripleQuery<'a> {
     /// - If object is set (no subject), starts from `relations_to` (object index)
     /// - If only predicate is set, starts from `triples_with_relation` (predicate index)
     /// - If nothing is set, returns all triples
-    pub fn execute(&self) -> Vec<&'a Triple> {
-        let candidates: Vec<&'a Triple> = if let Some(ref s) = self.subject {
-            self.kg.relations_from(s.clone())
+    pub fn execute(&self) -> impl Iterator<Item = &'a Triple> + '_ {
+        let candidates = if let Some(ref s) = self.subject {
+            CandidateIndices::from_slice(self.kg.subject_indices(s).unwrap_or(&[]))
         } else if let Some(ref o) = self.object {
-            self.kg.relations_to(o.clone())
+            CandidateIndices::from_slice(self.kg.object_indices(o).unwrap_or(&[]))
         } else if let Some(ref p) = self.predicate {
-            self.kg.triples_with_relation(p.clone())
+            CandidateIndices::from_slice(self.kg.predicate_indices(p).unwrap_or(&[]))
         } else {
-            return self.kg.triples().collect();
+            CandidateIndices::All(self.kg.all_triple_indices())
         };
 
-        candidates.into_iter().filter(|t| self.matches(t)).collect()
+        candidates
+            .filter_map(|idx| self.kg.triple_at_index(idx))
+            .filter(|t| self.matches(t))
     }
 
     /// Count matching triples without collecting them.
     pub fn count(&self) -> usize {
-        self.execute().len()
+        self.execute().count()
     }
 
     /// Check if any triple matches.
     pub fn exists(&self) -> bool {
-        !self.execute().is_empty()
+        self.execute().next().is_some()
     }
 
     fn matches(&self, t: &Triple) -> bool {
@@ -110,6 +112,28 @@ impl<'a> TripleQuery<'a> {
     }
 }
 
+enum CandidateIndices<'a> {
+    Indexed(std::slice::Iter<'a, usize>),
+    All(std::ops::Range<usize>),
+}
+
+impl<'a> CandidateIndices<'a> {
+    fn from_slice(indices: &'a [usize]) -> Self {
+        Self::Indexed(indices.iter())
+    }
+}
+
+impl Iterator for CandidateIndices<'_> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Indexed(indices) => indices.next().copied(),
+            Self::All(indices) => indices.next(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{KnowledgeGraph, Triple};
@@ -126,28 +150,33 @@ mod tests {
     #[test]
     fn subject_only() {
         let kg = sample_kg();
-        let results = kg.query().subject("Alice").execute();
+        let results: Vec<_> = kg.query().subject("Alice").execute().collect();
         assert_eq!(results.len(), 2);
     }
 
     #[test]
     fn predicate_only() {
         let kg = sample_kg();
-        let results = kg.query().predicate("knows").execute();
+        let results: Vec<_> = kg.query().predicate("knows").execute().collect();
         assert_eq!(results.len(), 2);
     }
 
     #[test]
     fn object_only() {
         let kg = sample_kg();
-        let results = kg.query().object("Acme").execute();
+        let results: Vec<_> = kg.query().object("Acme").execute().collect();
         assert_eq!(results.len(), 2);
     }
 
     #[test]
     fn subject_and_predicate() {
         let kg = sample_kg();
-        let results = kg.query().subject("Alice").predicate("knows").execute();
+        let results: Vec<_> = kg
+            .query()
+            .subject("Alice")
+            .predicate("knows")
+            .execute()
+            .collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].object().as_str(), "Bob");
     }
@@ -155,7 +184,12 @@ mod tests {
     #[test]
     fn subject_and_object() {
         let kg = sample_kg();
-        let results = kg.query().subject("Alice").object("Bob").execute();
+        let results: Vec<_> = kg
+            .query()
+            .subject("Alice")
+            .object("Bob")
+            .execute()
+            .collect();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].predicate().as_str(), "knows");
     }
@@ -163,34 +197,39 @@ mod tests {
     #[test]
     fn predicate_and_object() {
         let kg = sample_kg();
-        let results = kg.query().predicate("works_at").object("Acme").execute();
+        let results: Vec<_> = kg
+            .query()
+            .predicate("works_at")
+            .object("Acme")
+            .execute()
+            .collect();
         assert_eq!(results.len(), 2);
     }
 
     #[test]
     fn all_three_filters() {
         let kg = sample_kg();
-        let results = kg
+        let results: Vec<_> = kg
             .query()
             .subject("Alice")
             .predicate("knows")
             .object("Bob")
-            .execute();
+            .execute()
+            .collect();
         assert_eq!(results.len(), 1);
     }
 
     #[test]
     fn no_filters_returns_all() {
         let kg = sample_kg();
-        let results = kg.query().execute();
+        let results: Vec<_> = kg.query().execute().collect();
         assert_eq!(results.len(), 4);
     }
 
     #[test]
     fn no_matches() {
         let kg = sample_kg();
-        let results = kg.query().subject("Nobody").execute();
-        assert!(results.is_empty());
+        assert!(kg.query().subject("Nobody").execute().next().is_none());
     }
 
     #[test]

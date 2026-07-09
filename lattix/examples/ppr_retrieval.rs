@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use lattix::algo::ppr::{personalized_pagerank, PprConfig};
-use lattix::{KnowledgeGraph, Triple};
+use lattix::{EntityId, KnowledgeGraph, Triple};
 
 #[derive(Debug)]
 struct Passage {
@@ -92,7 +92,7 @@ fn main() {
 
 fn rank_by_graph<'a>(
     passages: &'a [Passage],
-    scores: &HashMap<String, f64>,
+    scores: &HashMap<EntityId, f64>,
     excluded_entities: &[&str],
 ) -> Vec<(&'a Passage, f64)> {
     let excluded_entities = excluded_entities.iter().copied().collect::<HashSet<_>>();

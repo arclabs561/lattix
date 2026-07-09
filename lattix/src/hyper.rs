@@ -410,6 +410,10 @@ impl HyperGraph {
         for (i, ht) in self.hyper_triples.iter().enumerate() {
             result.push(ht.core.clone());
             let statement_id = format!("_:stmt_{}", i);
+            result.extend(crate::rdf::statement_reification_triples(
+                &statement_id,
+                &ht.core,
+            ));
             for (key, value) in &ht.qualifiers {
                 result.push(Triple::new(
                     statement_id.clone(),
@@ -535,8 +539,28 @@ mod tests {
 
         let kg = hg.to_knowledge_graph();
 
-        // Plain triple + hyper-triple core + qualifier triple = 3
-        assert_eq!(kg.triple_count(), 3);
+        // Plain triple + hyper-triple core + rdf:subject/predicate/object + qualifier.
+        assert_eq!(kg.triple_count(), 6);
+        assert!(kg.triples().any(|t| {
+            t.subject().as_str() == "_:stmt_0"
+                && t.predicate().as_str() == "rdf:subject"
+                && t.object().as_str() == "Einstein"
+        }));
+        assert!(kg.triples().any(|t| {
+            t.subject().as_str() == "_:stmt_0"
+                && t.predicate().as_str() == "rdf:predicate"
+                && t.object().as_str() == "won"
+        }));
+        assert!(kg.triples().any(|t| {
+            t.subject().as_str() == "_:stmt_0"
+                && t.predicate().as_str() == "rdf:object"
+                && t.object().as_str() == "Nobel Prize"
+        }));
+        assert!(kg.triples().any(|t| {
+            t.subject().as_str() == "_:stmt_0"
+                && t.predicate().as_str() == "year"
+                && t.object().as_str() == "1921"
+        }));
     }
 
     #[test]

@@ -48,7 +48,7 @@ fn main() {
     let borders = get_border_counts();
     for (state, score) in sorted.iter().take(15) {
         let border_count = borders.get(state.as_str()).unwrap_or(&0);
-        println!("{:20} {:>10.4} {:>8}", state, score, border_count);
+        println!("{:<20} {:>10.4} {:>8}", state.as_str(), score, border_count);
     }
 
     println!("\n--- Analysis ---");

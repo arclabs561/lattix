@@ -11,8 +11,9 @@
 //! | JSON-LD | yes | yes | serde_json |
 //! | CSV | yes | -- | csv crate |
 //!
-//! RDF 1.2 introduces triple terms (quoted triples) for reification.
-//! This is tracked but not yet fully implemented.
+//! RDF support is a string-based compatibility layer over lattix triples.
+//! Triple terms and a typed public RDF term model are tracked but not yet
+//! implemented.
 
 pub mod csv;
 mod jsonld;
