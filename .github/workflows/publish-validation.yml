@@ -15,7 +15,34 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check --all
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test all features
+        run: cargo test --workspace --all-features
+
+      - name: Test default features
+        run: cargo test --workspace
+
+      - name: Check minimal features
+        run: cargo check --workspace --no-default-features --lib
+
+      - name: Semver check
+        run: |
+          cargo install cargo-semver-checks --locked || true
+          cargo semver-checks check-release --manifest-path lattix/Cargo.toml --all-features
+
+      - name: Supply-chain policy
+        run: |
+          cargo install cargo-deny --locked || true
+          cargo deny check
 
       - name: cargo publish (dry-run)
         run: cargo publish -p lattix --dry-run

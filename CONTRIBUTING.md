@@ -10,28 +10,46 @@ For non-trivial work (new graph types, algorithm additions, format changes), ope
 
 - Rust toolchain: stable, MSRV `1.87`. Use `rustup` to manage.
 - Optional: `cargo-nextest` for faster test runs.
-- Optional: `just` — canonical recipes.
-
-```
-just check    # fmt + clippy + tests
-just test     # full test suite
-```
+- Optional: `cargo-semver-checks` and `cargo-deny` for release gates.
 
 ## Style
 
 - Direct, lowercase prose in commits. No marketing words ("powerful", "robust", "elegant"). No em-dashes in prose.
 - Commit messages: `lattix: short lowercase description`. One commit per logical change.
-- `cargo fmt` and `cargo clippy --all-targets --all-features -- -D warnings` must pass before `git add`.
+- `cargo fmt` and `cargo clippy --workspace --all-targets --all-features -- -D warnings` must pass before `git add`.
 
 ## Testing
 
-- `just test` (or `cargo test --all-features`) runs the full suite.
+- `cargo test --workspace --all-features` runs the full feature suite.
+- `cargo test --workspace` runs the default feature suite.
+- `cargo check --workspace --no-default-features --lib` verifies the minimal build.
 - New graph algorithms need at least one correctness test against a known small graph plus a property test (idempotency, monotonicity, normalization where applicable).
 - Format parsers (N-Triples, Turtle, N-Quads, JSON-LD, CSV) need round-trip tests on the W3C test corpus or equivalent.
 
 ## Feature flags
 
-`Cargo.toml` defines `formats` (RDF parsing, default), `algo` (centrality + walks, default), `binary` (bincode), `sophia` (sophia integration). The minimal footprint (`--no-default-features`) gives just core types + petgraph + serde.
+`Cargo.toml` defines `formats` (RDF and CSV formats, default), `algo` (centrality + walks, default), `binary` (postcard serialization), `kge` (benchmark data and metrics), and `sophia` (sophia_api integration). The minimal footprint (`--no-default-features`) gives the core graph types without `formats` or `algo`.
+
+## Release checks
+
+Before publishing, run:
+
+```sh
+cargo fmt --check --all
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo test --workspace
+cargo check --workspace --no-default-features --lib
+cargo package --manifest-path lattix/Cargo.toml
+cargo semver-checks check-release --manifest-path lattix/Cargo.toml --all-features
+cargo deny check
+```
+
+Also run the MSRV check with Rust 1.87:
+
+```sh
+cargo +1.87.0 check --workspace --all-features
+```
 
 ## Pull requests
 
