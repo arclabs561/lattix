@@ -7,7 +7,7 @@ Knowledge graph data structures.
 
 ```toml
 [dependencies]
-lattix = "0.7.1"
+lattix = "0.8.0"
 ```
 
 ```rust

@@ -45,15 +45,9 @@ a recorded decision before more code lands.
 
 ## Remaining Before Publish
 
-1. Install or select Rust 1.87 and run the MSRV gate locally.
-2. Run the full release gate from `CONTRIBUTING.md`.
-3. Classify the release as `0.8.0` because centrality map keys, query execution,
-   and binary serialization changed.
-4. Move `CHANGELOG.md` entries from `[Unreleased]` to the versioned release
-   section immediately before publishing.
-5. Run `cargo publish -p lattix --dry-run` on the versioned patch.
-6. Publish only after dry-run, semver, policy, and docs.rs expectations are
-   verified.
+1. Run the full release gate from `CONTRIBUTING.md` on the versioned patch.
+2. Run `cargo publish -p lattix --dry-run` on the versioned patch.
+3. Publish only after dry-run, semver, policy, and remote CI are green.
 
 ## Deferred Forks
 

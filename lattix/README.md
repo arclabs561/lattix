@@ -9,7 +9,7 @@ centrality/community algorithms, neighbor sampling for GNN training, and RDF for
 
 ```toml
 [dependencies]
-lattix = "0.7.1"
+lattix = "0.8.0"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
@@ -50,13 +50,13 @@ assert_eq!(apple_relations.len(), 2);
 Disable defaults for core graph types without the `formats` or `algo` modules:
 
 ```toml
-lattix = { version = "0.7.1", default-features = false }
+lattix = { version = "0.8.0", default-features = false }
 ```
 
 For KGE benchmark pipelines (dataset loading, MRR/Hits@k evaluation):
 
 ```toml
-lattix = { version = "0.7.1", default-features = false, features = ["kge"] }
+lattix = { version = "0.8.0", default-features = false, features = ["kge"] }
 ```
 
 ## Algorithms
