@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-10
+
+### Fixed
+- Replaced the removed nightly `doc_auto_cfg` feature with `doc_cfg` so docs.rs
+  can build the crate documentation.
+
 ## [0.8.0] - 2026-07-09
 
 ### Added

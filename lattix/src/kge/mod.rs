@@ -15,8 +15,10 @@
 //!   test.txt
 //! ```
 //!
-//! [`load_dataset`] reads this layout into a [`Dataset`] of string triples.
-//! [`Dataset::into_interned`] maps strings to integer IDs for training.
+//! [`load_dataset`](crate::kge::load_dataset) reads this layout into a
+//! [`Dataset`](crate::kge::Dataset) of string triples.
+//! [`Dataset::into_interned`](crate::kge::Dataset::into_interned) maps strings
+//! to integer IDs for training.
 //!
 //! # Metrics
 //!
@@ -24,10 +26,10 @@
 //!
 //! | Metric | Function | Direction |
 //! |--------|----------|-----------|
-//! | Mean Reciprocal Rank | [`mean_reciprocal_rank`] | Higher is better |
-//! | Hits@k | [`hits_at_k`] | Higher is better |
-//! | Mean Rank | [`mean_rank`] | Lower is better |
-//! | Adjusted Mean Rank | [`adjusted_mean_rank`] | < 1.0 is better than random |
+//! | Mean Reciprocal Rank | [`mean_reciprocal_rank`](crate::kge::mean_reciprocal_rank) | Higher is better |
+//! | Hits@k | [`hits_at_k`](crate::kge::hits_at_k) | Higher is better |
+//! | Mean Rank | [`mean_rank`](crate::kge::mean_rank) | Lower is better |
+//! | Adjusted Mean Rank | [`adjusted_mean_rank`](crate::kge::adjusted_mean_rank) | < 1.0 is better than random |
 //!
 //! # Example
 //!
