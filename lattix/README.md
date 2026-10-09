@@ -4,12 +4,14 @@ Knowledge graph substrate: core types, algorithms, and serialization formats.
 
 `lattix` provides three graph representations (`KnowledgeGraph`, `HeteroGraph`, `HyperGraph`),
 centrality/community algorithms, neighbor sampling for GNN training, and RDF format support.
+Use `petgraph` (which `lattix` builds on) directly for a general graph without
+triple semantics, or an RDF store such as Oxigraph when you need SPARQL queries.
 
 ## Usage
 
 ```toml
 [dependencies]
-lattix = "0.8.0"
+lattix = "0.8.1"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
@@ -50,13 +52,13 @@ assert_eq!(apple_relations.len(), 2);
 Disable defaults for core graph types without the `formats` or `algo` modules:
 
 ```toml
-lattix = { version = "0.8.0", default-features = false }
+lattix = { version = "0.8.1", default-features = false }
 ```
 
 For KGE benchmark pipelines (dataset loading, MRR/Hits@k evaluation):
 
 ```toml
-lattix = { version = "0.8.0", default-features = false, features = ["kge"] }
+lattix = { version = "0.8.1", default-features = false, features = ["kge"] }
 ```
 
 ## Algorithms
@@ -82,6 +84,7 @@ cargo run --example ppr_retrieval
 Reads and writes N-Triples, Turtle, N-Quads, and JSON-LD. CSV import is read-only.
 N-Triples parsing uses [oxttl](https://crates.io/crates/oxttl), including
 `Triple::from_ntriples`.
+The W3C RDF 1.1 N-Triples syntax tests run in `tests/w3c_ntriples.rs`.
 
 RDF support is a compatibility layer over lattix triples. IRIs and blank nodes
 round trip directly; literals are stored in their N-Triples lexical form. RDF

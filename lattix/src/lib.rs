@@ -174,6 +174,11 @@
 //! assert_eq!(apple_relations.len(), 2);
 //! ```
 
+// Compile and run the README's Rust examples as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;
+
 #[cfg(feature = "algo")]
 pub mod algo;
 mod entity;
