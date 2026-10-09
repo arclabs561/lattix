@@ -135,7 +135,6 @@ fn tokenize(text: &str) -> HashSet<String> {
 fn compare_scored_passages(left: &(&Passage, f64), right: &(&Passage, f64)) -> std::cmp::Ordering {
     right
         .1
-        .partial_cmp(&left.1)
-        .unwrap_or(std::cmp::Ordering::Equal)
+        .total_cmp(&left.1)
         .then_with(|| left.0.id.cmp(right.0.id))
 }

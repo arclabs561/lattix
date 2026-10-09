@@ -39,7 +39,7 @@ fn main() {
 
     // Sort by score
     let mut sorted: Vec<_> = scores.iter().collect();
-    sorted.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+    sorted.sort_by(|a, b| b.1.total_cmp(a.1));
 
     println!("{:20} {:>10} {:>8}", "State", "PageRank", "Borders");
     println!("{}", "-".repeat(42));
