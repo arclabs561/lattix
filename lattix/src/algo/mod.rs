@@ -155,10 +155,18 @@ impl DedupAdjacency {
         }
         Self(rows)
     }
+}
 
-    pub(crate) fn rows(&self) -> &[Vec<usize>] {
-        &self.0
-    }
+/// Key per-node scores (indexed by petgraph node index) by entity ID.
+pub(crate) fn scores_by_entity(
+    graph: &petgraph::Graph<crate::Entity, crate::Relation>,
+    scores: Vec<f64>,
+) -> HashMap<EntityId, f64> {
+    scores
+        .into_iter()
+        .enumerate()
+        .map(|(idx, score)| (graph[NodeIndex::new(idx)].id.clone(), score))
+        .collect()
 }
 
 impl graphops::GraphRef for DedupAdjacency {

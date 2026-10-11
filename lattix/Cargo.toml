@@ -19,7 +19,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petgraph = { version = "0.8.3", features = ["serde-1"] }
 thiserror = "2.0"
-graphops = { version = "0.5.0", optional = true }
+graphops = { version = "0.5.1", optional = true }
 oxttl = "0.2.3"
 oxrdf = "0.3.3"
 rand = { version = "0.9", optional = true }

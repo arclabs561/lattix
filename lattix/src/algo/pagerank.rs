@@ -103,62 +103,22 @@ pub fn try_pagerank(
     }
 
     let adjacency = crate::algo::DedupAdjacency::directed(graph, petgraph::Direction::Outgoing);
-    let adjacency = adjacency.rows();
+    // Unchecked graphops entry point: `config` is already validated above, and
+    // graphops' own validation rejects `max_iterations == 0`, which lattix
+    // accepts (it returns the uniform start vector, unconverged).
+    let run = graphops::pagerank_ref_run(
+        &adjacency,
+        graphops::PageRankConfig {
+            damping: config.damping_factor,
+            max_iterations: config.max_iterations,
+            tolerance: config.tolerance,
+        },
+    );
 
-    let n_f = n as f64;
-    let damping = config.damping_factor;
-    let teleport = (1.0 - damping) / n_f;
-    let mut scores = vec![1.0 / n_f; n];
-    let mut next = vec![0.0; n];
-
-    let mut iterations = 0;
-    let mut converged = false;
-    for _ in 0..config.max_iterations {
-        iterations += 1;
-        next.fill(teleport);
-
-        let dangling: f64 = adjacency
-            .iter()
-            .enumerate()
-            .filter(|(_, neighbors)| neighbors.is_empty())
-            .map(|(idx, _)| scores[idx])
-            .sum();
-        let dangling_share = damping * dangling / n_f;
-        for score in &mut next {
-            *score += dangling_share;
-        }
-
-        for (src, neighbors) in adjacency.iter().enumerate() {
-            if neighbors.is_empty() {
-                continue;
-            }
-            let share = damping * scores[src] / neighbors.len() as f64;
-            for &dst in neighbors {
-                next[dst] += share;
-            }
-        }
-
-        let diff: f64 = scores
-            .iter()
-            .zip(next.iter())
-            .map(|(old, new)| (old - new).abs())
-            .sum();
-        std::mem::swap(&mut scores, &mut next);
-        if diff < config.tolerance {
-            converged = true;
-            break;
-        }
-    }
-
-    let mut result = HashMap::with_capacity(n);
-    for (idx, score) in scores.into_iter().enumerate() {
-        let entity = &graph[petgraph::graph::NodeIndex::new(idx)];
-        result.insert(entity.id.clone(), score);
-    }
     Ok(PageRankResult {
-        scores: result,
-        iterations,
-        converged,
+        scores: crate::algo::scores_by_entity(graph, run.scores),
+        iterations: run.iterations,
+        converged: run.converged,
     })
 }
 
@@ -301,6 +261,55 @@ mod tests {
         assert!(!result.converged);
         assert!((result.scores["A"] - 0.375).abs() < 1e-15);
         assert!((result.scores["B"] - 0.625).abs() < 1e-15);
+    }
+
+    #[test]
+    fn pagerank_equals_graphops_dense_adjacency_path() {
+        // Parallel triples (A->B twice) and a dangling node (D) exercise the
+        // dedup and dangling conventions; graphops reads the 0/1 matrix.
+        let mut kg = KnowledgeGraph::new();
+        for (s, p, o) in [
+            ("A", "r", "B"),
+            ("A", "parallel", "B"),
+            ("A", "r", "C"),
+            ("B", "r", "C"),
+            ("C", "r", "A"),
+            ("C", "r", "D"),
+        ] {
+            kg.add_triple(Triple::new(s, p, o));
+        }
+        let ids = ["A", "B", "C", "D"];
+        let dense = vec![
+            vec![0.0, 1.0, 1.0, 0.0],
+            vec![0.0, 0.0, 1.0, 0.0],
+            vec![1.0, 0.0, 0.0, 1.0],
+            vec![0.0, 0.0, 0.0, 0.0],
+        ];
+        let config = PageRankConfig {
+            damping_factor: 0.85,
+            max_iterations: 200,
+            tolerance: 1e-12,
+        };
+
+        let actual = try_pagerank(&kg, config).unwrap();
+        let expected = graphops::pagerank_run(
+            &graphops::AdjacencyMatrix(&dense),
+            graphops::PageRankConfig {
+                damping: 0.85,
+                max_iterations: 200,
+                tolerance: 1e-12,
+            },
+        );
+
+        assert_eq!(actual.iterations, expected.iterations);
+        assert_eq!(actual.converged, expected.converged);
+        for (id, score) in ids.iter().zip(&expected.scores) {
+            assert!(
+                (actual.scores[*id] - score).abs() < 1e-12,
+                "{id}: lattix={} graphops={score}",
+                actual.scores[*id]
+            );
+        }
     }
 
     proptest! {
