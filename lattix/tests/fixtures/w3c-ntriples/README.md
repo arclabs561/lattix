@@ -8,3 +8,9 @@ Copied from <https://github.com/w3c/rdf-tests> at commit
 These files are covered by the W3C test suite dual license (W3C Test Suite
 License and the 3-clause BSD License):
 <https://www.w3.org/Consortium/Legal/2008/04-testsuite-copyright.html>.
+
+The BSD alternative for software development and testing is reproduced in
+[LICENSE-BSD-3-Clause](LICENSE-BSD-3-Clause). [NOTICE](NOTICE) records the
+upstream copyright notice retained in `nt-syntax-subm-01.nt`. These third-party
+fixtures retain their upstream licensing terms, separately from lattix's
+MIT OR Apache-2.0 license.
