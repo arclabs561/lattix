@@ -433,6 +433,7 @@ fn format_cypher_props(props: &HashMap<String, serde_json::Value>, name: &str) -
     let mut parts = vec![format!("name: '{}'", escape_cypher_string(name))];
 
     for (key, value) in props {
+        let key = quote_cypher_property_key(key);
         let formatted = match value {
             serde_json::Value::String(s) => format!("{}: '{}'", key, escape_cypher_string(s)),
             serde_json::Value::Number(n) => format!("{}: {}", key, n),
@@ -447,6 +448,32 @@ fn format_cypher_props(props: &HashMap<String, serde_json::Value>, name: &str) -
     } else {
         String::new()
     }
+}
+
+/// Preserve simple keys and delimit other names without changing their contents.
+fn quote_cypher_property_key(key: &str) -> String {
+    let mut chars = key.chars();
+    if chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return key.to_owned();
+    }
+
+    let mut quoted = String::from("`");
+    for c in key.chars() {
+        match c {
+            '`' => quoted.push_str("``"),
+            // Neo4j expands Unicode escapes once before tokenizing identifiers.
+            // Encoding each literal backslash prevents a following uXXXX from
+            // being interpreted, without adding a backslash to the key itself.
+            '\\' => quoted.push_str(r"\u005c"),
+            _ => quoted.push(c),
+        }
+    }
+    quoted.push('`');
+    quoted
 }
 
 /// Escape special characters in Cypher strings.

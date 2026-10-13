@@ -344,3 +344,66 @@ mod query_api {
         assert_eq!(first.object().as_str(), "Bob");
     }
 }
+
+mod cypher_property_keys {
+    use lattix::{GraphDocument, GraphNode};
+    use serde_json::{json, Value};
+
+    fn export(key: &str, value: Value) -> String {
+        let mut document = GraphDocument::new();
+        document
+            .nodes
+            .push(GraphNode::new("a", "Person", "Alice").with_property(key, value));
+        document.to_cypher()
+    }
+
+    #[test]
+    fn ordinary_keys_keep_existing_output() {
+        assert_eq!(
+            export("age", json!(30)),
+            "CREATE (na:Person {id: 'a', age: 30});\n\n"
+        );
+    }
+
+    #[test]
+    fn scalar_properties_quote_non_identifier_keys() {
+        for (value, literal) in [
+            (json!(30), "30"),
+            (json!(true), "true"),
+            (json!("Ada"), "'Ada'"),
+        ] {
+            assert_eq!(
+                export("display name", value),
+                format!("CREATE (na:Person {{id: 'a', `display name`: {literal}}});\n\n")
+            );
+        }
+    }
+
+    #[test]
+    fn quoted_keys_preserve_delimiters_and_literal_unicode_escapes() {
+        for (key, identifier) in [
+            ("odd`key", "`odd``key`"),
+            (r"literal\u0060", r"`literal\u005cu0060`"),
+            (r"literal\u005c", r"`literal\u005cu005c`"),
+            (r"slash\end", r"`slash\u005cend`"),
+            ("punct:key", "`punct:key`"),
+            ("", "``"),
+            ("9key", "`9key`"),
+        ] {
+            assert_eq!(
+                export(key, json!(30)),
+                format!("CREATE (na:Person {{id: 'a', {identifier}: 30}});\n\n")
+            );
+        }
+    }
+
+    #[test]
+    fn non_scalar_values_keep_existing_omission() {
+        for value in [Value::Null, json!([1]), json!({"x": 1})] {
+            assert_eq!(
+                export("display name", value),
+                "CREATE (na:Person {id: 'a'});\n\n"
+            );
+        }
+    }
+}
