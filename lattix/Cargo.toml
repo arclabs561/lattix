@@ -22,7 +22,7 @@ thiserror = "2.0"
 graphops = { version = "0.5.1", optional = true }
 oxttl = "0.2.3"
 oxrdf = "0.3.3"
-rand = { version = "0.9", optional = true }
+rand = { version = "0.10", optional = true }
 rand_xorshift = { version = "0.4.0", optional = true }
 rayon = { version = "1.10", optional = true }
 csv = { version = "1.4.0", optional = true }
