@@ -1,0 +1,17 @@
+W3C N-Triples test fixtures
+
+The upstream repository distributes these fixtures under the W3C test suite
+licensing terms linked in README.md. LICENSE-BSD-3-Clause reproduces the BSD
+alternative for software development and testing; it is separate from the
+lattix crate's MIT OR Apache-2.0 license.
+
+The original copyright notice below is retained in nt-syntax-subm-01.nt:
+
+Copyright World Wide Web Consortium, (Massachusetts Institute of
+Technology, Institut National de Recherche en Informatique et en
+Automatique, Keio University).
+
+All Rights Reserved.
+
+Please see the full Copyright clause at
+<http://www.w3.org/Consortium/Legal/copyright-software.html>
