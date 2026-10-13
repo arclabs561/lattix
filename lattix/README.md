@@ -11,7 +11,7 @@ triple semantics, or an RDF store such as Oxigraph when you need SPARQL queries.
 
 ```toml
 [dependencies]
-lattix = "0.8.1"
+lattix = "0.8.2"
 ```
 
 Default features include `formats` (N-Triples, Turtle, N-Quads, JSON-LD, CSV) and
@@ -52,13 +52,13 @@ assert_eq!(apple_relations.len(), 2);
 Disable defaults for core graph types without the `formats` or `algo` modules:
 
 ```toml
-lattix = { version = "0.8.1", default-features = false }
+lattix = { version = "0.8.2", default-features = false }
 ```
 
 For KGE benchmark pipelines (dataset loading, MRR/Hits@k evaluation):
 
 ```toml
-lattix = { version = "0.8.1", default-features = false, features = ["kge"] }
+lattix = { version = "0.8.2", default-features = false, features = ["kge"] }
 ```
 
 ## Algorithms
