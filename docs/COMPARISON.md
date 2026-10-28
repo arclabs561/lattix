@@ -22,12 +22,12 @@
 
 | Feature | lattix | PyG |
 |---------|---------|---------|
-| **Role** | Pre-processing / Inference / Embedding Gen | Model Training / GNN Architectures |
-| **Embeddings** | Shallow (TransE, Node2Vec) | Deep (GCN, GAT, GraphSAGE) |
-| **Inference** | ONNX Runtime (CPU/GPU) | PyTorch (CPU/GPU) |
-| **Integration** | `lattix-py` bindings | Native Python |
+| **Role** | Graph data preparation and traversal | Model training and GNN architectures |
+| **Embeddings** | Generates random-walk corpora; does not train embeddings | GNN model training |
+| **Interface** | Rust graph types | Python tensors and graph types |
 
-**Summary:** `lattix` can prepare RDF-derived graph data for PyG and can run exported KGE models through ONNX.
+**Summary:** `lattix` provides typed graphs and neighbor sampling for data preparation.
+Model training and inference belong to the consuming application.
 
 ## vs. NetworkX
 **URL:** https://networkx.org/
@@ -36,10 +36,10 @@
 | Feature | lattix | NetworkX |
 |---------|---------|---------|
 | **Implementation** | Rust | Python |
-| **Scale** | Medium/Large (Millions of nodes) | Small/Medium (<100k nodes) |
 | **RDF Support** | Native (`oxttl`/`oxrdf`) | Via plugins (rdflib) |
 
-**Summary:** `lattix` targets larger knowledge graph workloads and exposes Python bindings through `lattix-py`.
+**Summary:** `lattix` represents labeled triples and reads RDF formats. NetworkX
+provides general graph analysis; capacity depends on the graph and workload.
 
 ## vs. node2vec-rs
 **URL:** https://github.com/GregorLueg/node2vec-rs

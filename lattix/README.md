@@ -1,6 +1,6 @@
 # lattix
 
-Knowledge graph substrate: core types, algorithms, and serialization formats.
+Knowledge graph data structures.
 
 `lattix` provides three graph representations (`KnowledgeGraph`, `HeteroGraph`, `HyperGraph`),
 centrality/community algorithms, neighbor sampling for GNN training, and RDF format support.
