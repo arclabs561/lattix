@@ -43,8 +43,9 @@ if let Some(path) = kg.find_path("Apple", "Steve Jobs") {
 
 | Feature | Default | What it enables |
 |---------|---------|-----------------|
-| `formats` | yes | RDF and CSV readers/writers (N-Triples, Turtle, N-Quads, JSON-LD, CSV) |
+| `formats` | yes | N-Triples, Turtle, N-Quads and JSON-LD readers/writers; CSV reader |
 | `algo` | yes | Centrality algorithms, PageRank, random walks, sampling (pulls in `rand`, `rayon`) |
+| `kge` | no | KGE benchmark datasets, string interning, filtered ranking metrics |
 | `binary` | no | Postcard serialization |
 | `sophia` | no | Sophia RDF framework integration |
 
