@@ -41,6 +41,10 @@ pub(crate) fn term_to_string(t: &oxrdf::Term) -> String {
                 let datatype = l.datatype().as_str();
                 if datatype == XSD_STRING {
                     render_literal(l.value(), None, None)
+                } else if let Some(local) = decode_local_iri(datatype) {
+                    // Decode a local datatype like a local ID; rendering the raw
+                    // `urn:lattix:local:` IRI would encode it a second time.
+                    format!("\"{}\"^^<{local}>", escape_literal_lexical(l.value()))
                 } else {
                     render_literal(l.value(), None, Some(datatype))
                 }

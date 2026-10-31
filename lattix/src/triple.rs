@@ -155,6 +155,19 @@ mod tests {
     }
 
     #[test]
+    fn test_ntriples_roundtrip_literal_with_local_datatype() {
+        // A non-IRI datatype is written as urn:lattix:local:int and must be
+        // decoded on read like any other local ID, not re-encoded each cycle.
+        let original = Triple::new("a", "p", "\"5\"^^<int>");
+
+        let once = Triple::from_ntriples(&original.to_ntriples()).unwrap();
+        assert_eq!(original.object(), once.object());
+
+        let twice = Triple::from_ntriples(&once.to_ntriples()).unwrap();
+        assert_eq!(once.object(), twice.object());
+    }
+
+    #[test]
     fn test_parse_ntriples() {
         let line = r#"<http://example.org/Apple> <http://example.org/type> <http://example.org/Company> ."#;
         let triple = Triple::from_ntriples(line).unwrap();
