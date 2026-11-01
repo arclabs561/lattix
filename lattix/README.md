@@ -4,8 +4,6 @@ Knowledge graph data structures.
 
 `lattix` provides three graph representations (`KnowledgeGraph`, `HeteroGraph`, `HyperGraph`),
 centrality/community algorithms, neighbor sampling for GNN training, and RDF format support.
-Use `petgraph` (which `lattix` builds on) directly for a general graph without
-triple semantics, or an RDF store such as Oxigraph when you need SPARQL queries.
 
 ## Usage
 
@@ -43,7 +41,7 @@ assert_eq!(apple_relations.len(), 2);
 
 | Feature | Default | What it enables |
 |---------|---------|-----------------|
-| `formats` | yes | N-Triples, Turtle, N-Quads, JSON-LD, CSV (via oxttl/oxrdf) |
+| `formats` | yes | N-Triples, Turtle, N-Quads and JSON-LD readers/writers; CSV reader |
 | `algo` | yes | Centrality, PageRank, PPR, random walks, components, sampling, label propagation |
 | `kge` | no | KGE benchmark data: dataset loading, string interning, filtered eval metrics |
 | `binary` | no | postcard serialization (`to_binary_file` / `from_binary_file`) |
@@ -68,8 +66,7 @@ lattix = { version = "0.8.2", default-features = false, features = ["kge"] }
 **Other**: personalized PageRank (PPR), Node2Vec-style random walks, connected components,
 neighbor sampling (homogeneous and heterogeneous), label propagation community detection.
 
-All iterative algorithms have convergence controls (`max_iterations`, `tolerance`).
-Sampling is deterministic under a given seed.
+Sampling and random walks are deterministic under a given seed.
 
 Examples:
 
