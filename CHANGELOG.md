@@ -6,6 +6,16 @@
 - Reading a literal whose datatype is a local (non-IRI) ID now decodes the
   `urn:lattix:local:` datatype, so `"5"^^<int>` survives an N-Triples round
   trip instead of growing a new encoding layer on every write and read.
+- The N-Triples and N-Quads writers emit a string verbatim as a blank node or
+  `<iri>` only when it is valid there, and otherwise write it as a
+  `urn:lattix:local:` ID. IDs such as `http://example.org/a b`, `<x>` and
+  `_:b 1` produced lines the reader rejects, so `to_ntriples_file` followed by
+  `from_ntriples_file_lenient` silently dropped those triples. They now round
+  trip unchanged. The Turtle writer also writes an invalid IRI such as
+  `http://example.org/a b` as a local ID.
+- `Node2Vec::walk` (and `generate_walks`) derive per-walk seeds with
+  wrapping addition; a seed near `u64::MAX` panicked with an overflow in debug
+  builds.
 
 ## [0.8.2] - 2026-10-13
 
