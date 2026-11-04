@@ -80,7 +80,7 @@ pub(crate) fn parse_ntriples_line(line: &str) -> crate::Result<Triple> {
 }
 
 pub(crate) fn render_iri_or_blank(s: &str) -> String {
-    if s.starts_with("_:") || (s.starts_with('<') && s.ends_with('>')) {
+    if is_blank_node_syntax(s) || is_iriref_syntax(s) {
         s.to_string()
     } else {
         format!("<{}>", iri_body_for(s))
@@ -88,15 +88,30 @@ pub(crate) fn render_iri_or_blank(s: &str) -> String {
 }
 
 pub(crate) fn render_object(s: &str) -> String {
-    if s.starts_with("_:") {
+    if is_blank_node_syntax(s) {
         s.to_string()
     } else if let Some(literal) = normalize_literal(s) {
         literal
-    } else if s.starts_with('<') && s.ends_with('>') {
+    } else if is_iriref_syntax(s) {
         s.to_string()
     } else {
         format!("<{}>", iri_body_for(s))
     }
+}
+
+/// `_:label` with a valid N-Triples blank node label. Anything else starting
+/// with `_:` (for example `_:b 1`) is a local ID.
+fn is_blank_node_syntax(s: &str) -> bool {
+    s.strip_prefix("_:")
+        .is_some_and(|label| oxrdf::BlankNodeRef::new(label).is_ok())
+}
+
+/// `<iri>` around a valid absolute IRI. Anything else in angle brackets (for
+/// example `<x>`) is a local ID; writing it verbatim gives an invalid line.
+fn is_iriref_syntax(s: &str) -> bool {
+    s.strip_prefix('<')
+        .and_then(|rest| rest.strip_suffix('>'))
+        .is_some_and(|iri| oxrdf::NamedNodeRef::new(iri).is_ok())
 }
 
 pub(crate) fn render_literal(
@@ -185,7 +200,10 @@ pub(crate) fn iri_to_string(iri: &str) -> String {
 }
 
 pub(crate) fn iri_body_for(s: &str) -> String {
-    if is_absolute_iri(s) && !s.starts_with(LOCAL_IRI_PREFIX) {
+    // An IRI-shaped string that is not a valid IRI (for example one containing
+    // a space) is a local ID: a `\u0020` escape still decodes to an invalid IRI.
+    if is_absolute_iri(s) && !s.starts_with(LOCAL_IRI_PREFIX) && oxrdf::NamedNodeRef::new(s).is_ok()
+    {
         escape_iri(s)
     } else {
         format!("{LOCAL_IRI_PREFIX}{}", percent_encode(s))

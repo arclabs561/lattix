@@ -198,7 +198,8 @@ impl<'a> Node2Vec<'a> {
         (0..self.config.num_walks)
             .into_par_iter()
             .flat_map(|iter_idx| {
-                let mut rng = XorShiftRng::seed_from_u64(self.config.seed + iter_idx as u64);
+                let mut rng =
+                    XorShiftRng::seed_from_u64(self.config.seed.wrapping_add(iter_idx as u64));
                 let mut walks = Vec::with_capacity(node_indices.len());
 
                 // Shuffle start nodes to avoid bias
