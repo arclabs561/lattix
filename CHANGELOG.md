@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-11-04
+
 ### Fixed
 - Reading a literal whose datatype is a local (non-IRI) ID now decodes the
   `urn:lattix:local:` datatype, so `"5"^^<int>` survives an N-Triples round
