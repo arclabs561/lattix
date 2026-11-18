@@ -132,25 +132,7 @@ pub fn closeness_centrality(
                 sum
             }
         } else {
-            // Classic: reachable / Σ d(v,u)
-            let reachable: Vec<_> = distances
-                .iter()
-                .enumerate()
-                .filter(|(i, &d)| *i != source.index() && d > 0)
-                .collect();
-
-            if reachable.is_empty() {
-                0.0
-            } else {
-                let total_dist: i32 = reachable.iter().map(|(_, &d)| d).sum();
-                let reachable_count = reachable.len() as f64;
-                let classic = reachable_count / f64::from(total_dist);
-                if config.normalized {
-                    classic * reachable_count / (n - 1) as f64
-                } else {
-                    classic
-                }
-            }
+            classic_closeness(&distances, config.normalized)
         };
 
         let entity = &graph[source];
@@ -158,6 +140,30 @@ pub fn closeness_centrality(
     }
 
     result
+}
+
+// Distances contain 0 for the source and -1 for unreachable nodes.
+#[allow(clippy::cast_precision_loss)]
+fn classic_closeness(distances: &[i32], normalized: bool) -> f64 {
+    let mut reachable = 0_usize;
+    let mut total_distance = 0_i64;
+    for &distance in distances {
+        if distance > 0 {
+            reachable += 1;
+            total_distance += i64::from(distance);
+        }
+    }
+
+    if reachable == 0 {
+        return 0.0;
+    }
+    let reachable = reachable as f64;
+    let classic = reachable / total_distance as f64;
+    if normalized {
+        classic * reachable / (distances.len() - 1) as f64
+    } else {
+        classic
+    }
 }
 
 /// BFS to find distances from source.
@@ -297,6 +303,15 @@ mod tests {
             (actual - expected).abs() < 1e-12,
             "{node}: expected {expected}, got {actual}"
         );
+    }
+
+    #[test]
+    fn classic_path_distance_sum_exceeds_i32() {
+        // Distances from an endpoint of a path with 65,537 nodes.
+        let distances: Vec<_> = (0..=65_536).collect();
+        let expected = 2.0 / 65_537.0;
+        assert_eq!(classic_closeness(&distances, false), expected);
+        assert_eq!(classic_closeness(&distances, true), expected);
     }
 
     fn classic_undirected(kg: &KnowledgeGraph) -> HashMap<EntityId, f64> {
