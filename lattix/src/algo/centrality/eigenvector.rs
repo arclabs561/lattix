@@ -124,8 +124,14 @@ pub fn eigenvector_centrality(
         .collect();
 
     for _iter in 0..config.max_iterations {
-        // Compute A × x (or A^T × x for in-edge centrality)
-        new_scores.fill(0.0);
+        // Compute (A + I) × x (or (A^T + I) × x for in-edge centrality).
+        //
+        // The shift leaves the eigenvectors unchanged and moves the spectrum
+        // from [-λ, λ] to [1 - λ, 1 + λ]. Without it, a bipartite graph (every
+        // tree, every even cycle) has eigenvalues +λ and -λ of equal modulus,
+        // and plain power iteration alternates between two vectors instead of
+        // converging. networkx applies the same shift.
+        new_scores.copy_from_slice(&scores);
 
         for (idx, neighbors) in predecessors.iter().enumerate() {
             for &pred in neighbors {
@@ -172,6 +178,49 @@ pub fn eigenvector_centrality(
 mod tests {
     use super::*;
     use crate::Triple;
+
+    #[test]
+    fn undirected_path_converges_to_the_principal_eigenvector() {
+        // A path is bipartite. The principal eigenvector of a-b-c is
+        // (1, sqrt(2), 1) / 2.
+        let mut kg = KnowledgeGraph::new();
+        kg.add_triple(Triple::new("a", "rel", "b"));
+        kg.add_triple(Triple::new("b", "rel", "c"));
+        let config = EigenvectorConfig {
+            undirected: true,
+            ..Default::default()
+        };
+        let scores = eigenvector_centrality(&kg, config);
+        let get = |name: &str| scores[&crate::EntityId::from(name)];
+        assert!((get("a") - 0.5).abs() < 1e-4, "a = {}", get("a"));
+        assert!((get("c") - 0.5).abs() < 1e-4, "c = {}", get("c"));
+        assert!((get("b") - 0.5f64.sqrt()).abs() < 1e-4, "b = {}", get("b"));
+    }
+
+    #[test]
+    fn undirected_star_ranks_the_hub_above_the_leaves() {
+        let mut kg = KnowledgeGraph::new();
+        for leaf in ["l1", "l2", "l3", "l4"] {
+            kg.add_triple(Triple::new("hub", "rel", leaf));
+        }
+        let config = EigenvectorConfig {
+            undirected: true,
+            ..Default::default()
+        };
+        let scores = eigenvector_centrality(&kg, config);
+        let get = |name: &str| scores[&crate::EntityId::from(name)];
+        // Principal eigenvector of K(1,4): hub 1/sqrt(2), each leaf 1/(2 sqrt(2)).
+        assert!(
+            (get("hub") - 0.5f64.sqrt()).abs() < 1e-4,
+            "hub = {}",
+            get("hub")
+        );
+        assert!(
+            (get("l1") - 0.125f64.sqrt()).abs() < 1e-4,
+            "leaf = {}",
+            get("l1")
+        );
+    }
 
     #[test]
     fn test_eigenvector_symmetric() {
