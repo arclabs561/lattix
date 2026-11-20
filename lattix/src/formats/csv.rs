@@ -39,6 +39,11 @@ impl Csv {
     pub fn read<R: Read>(reader: R) -> Result<KnowledgeGraph> {
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
+            // Rows may differ in length: the docs promise that 2- and
+            // 3-column rows can be mixed and shorter rows are skipped. Without
+            // this the csv crate rejects any row whose field count differs
+            // from the first row's.
+            .flexible(true)
             .from_reader(reader);
 
         let mut kg = KnowledgeGraph::new();
@@ -94,6 +99,25 @@ mod tests {
         let data = "";
         let kg = Csv::read(data.as_bytes()).unwrap();
         assert_eq!(kg.triple_count(), 0);
+    }
+
+    #[test]
+    fn test_rows_of_different_lengths_in_one_file() {
+        // A short row between two triples is skipped, not an error.
+        let kg = Csv::read("Alice,knows,Bob\nlonely\nBob,works_at,Acme\n".as_bytes()).unwrap();
+        assert_eq!(kg.triple_count(), 2);
+
+        // 3-column and 2-column rows can be mixed.
+        let kg = Csv::read("Alice,knows,Bob\nBob,Acme\n".as_bytes()).unwrap();
+        assert_eq!(kg.triple_count(), 2);
+        assert_eq!(
+            kg.relations_from("Bob")[0].predicate().as_str(),
+            "related_to"
+        );
+
+        // Extra columns are ignored, as documented for "3+ columns".
+        let kg = Csv::read("Alice,Bob\nBob,works_at,Acme,2020\n".as_bytes()).unwrap();
+        assert_eq!(kg.triple_count(), 2);
     }
 
     #[test]
