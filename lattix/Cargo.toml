@@ -60,3 +60,7 @@ perf = { level = "warn", priority = -1 }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "triples"
+test = true

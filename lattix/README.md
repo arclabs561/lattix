@@ -76,6 +76,20 @@ cargo run --example pagerank_demo
 cargo run --example ppr_retrieval
 ```
 
+### Find a path in your graph
+
+From a checkout, try the path from a paper to a dataset:
+
+```sh
+cat > papers.nt <<'EOF'
+<urn:paper> <urn:cites> <urn:survey> .
+<urn:survey> <urn:uses> <urn:data> .
+EOF
+cargo run --example triples -- papers.nt urn:paper urn:data
+```
+
+The output lists the two triples in order. Swap the IDs and there is no directed path. Substitute your own N-Triples file and pass the entity IRIs without angle brackets. A malformed line stops the search and reports its line number.
+
 ## Formats
 
 Reads and writes N-Triples, Turtle, N-Quads, and JSON-LD. CSV import is read-only.
