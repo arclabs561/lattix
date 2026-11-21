@@ -64,6 +64,20 @@ RDF 1.2 triple terms are not part of the public graph model.
 - **Algorithms**: `algo::pagerank`, `algo::centrality`
 - **Examples**: `cargo run --example pagerank_demo`, `cargo run --example triples`
 
+### Find a path in your graph
+
+From a checkout, try the path from a paper to a dataset:
+
+```sh
+cat > papers.nt <<'EOF'
+<urn:paper> <urn:cites> <urn:survey> .
+<urn:survey> <urn:uses> <urn:data> .
+EOF
+cargo run --example triples -- papers.nt urn:paper urn:data
+```
+
+The output lists the two triples in order. Swap the IDs and there is no directed path. Substitute your own N-Triples file and pass the entity IRIs without angle brackets. A malformed line stops the search and reports its line number.
+
 ## License
 
 MIT OR Apache-2.0
