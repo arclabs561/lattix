@@ -50,10 +50,7 @@ pub fn sample_neighbors(
             if all_neighbors.len() <= k {
                 all_neighbors
             } else {
-                all_neighbors
-                    .choose_multiple(&mut rng, k)
-                    .cloned()
-                    .collect()
+                all_neighbors.sample(&mut rng, k).cloned().collect()
             }
         });
 
@@ -247,7 +244,7 @@ impl<'a> NeighborSampler<'a> {
                         all_neighbors
                     } else {
                         all_neighbors
-                            .choose_multiple(&mut rng, num_neighbors)
+                            .sample(&mut rng, num_neighbors)
                             .cloned()
                             .collect()
                     };
@@ -354,10 +351,7 @@ impl<'a> HeteroNeighborSampler<'a> {
                     let sampled: Vec<_> = if neighbors.len() <= num_sample {
                         neighbors
                     } else {
-                        neighbors
-                            .choose_multiple(&mut rng, num_sample)
-                            .copied()
-                            .collect()
+                        neighbors.sample(&mut rng, num_sample).copied().collect()
                     };
 
                     for dst_local_idx in sampled {
